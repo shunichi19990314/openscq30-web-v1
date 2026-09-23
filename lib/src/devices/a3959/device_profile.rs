@@ -195,6 +195,15 @@ impl DeviceImplementation for A3959Implementation {
         state: DeviceState,
         equalizer_configuration: EqualizerConfiguration,
     ) -> crate::Result<CommandResponse> {
+        // the web UI re-synchronizes the equalizer shortly after connecting; resending
+        // an identical configuration is unnecessary and suspected of making some
+        // firmwares drop the connection, so skip the write in that case
+        if state.equalizer_configuration == equalizer_configuration {
+            return Ok(CommandResponse {
+                packets: vec![],
+                new_state: state,
+            });
+        }
         let preserved_drc = *self.drc.lock().expect("drc mutex poisoned");
         let packet = SetEqualizerMonoPreservedDrcPacket {
             configuration: &equalizer_configuration,
