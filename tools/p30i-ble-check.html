@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>P30i (A3959) BLE GATT 診断</title>
+<title>P30i (A3959) BLE GATT 診断 v2</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; color: #222; line-height: 1.55; }
   h1 { font-size: 1.35rem; color: #474e3d; }
@@ -22,11 +22,12 @@
 </style>
 </head>
 <body>
-<h1>Soundcore P30i (A3959) — BLE GATT 診断ページ</h1>
-<p class="note">Web Bluetooth は Chrome / Edge ＋ secure context (localhost / https) 必須。v1 Web版と同じ GATT サービス族・特性UUIDを使って、P30i が同じプロトコルで応答するかを確認します。手順書: <code>docs/phase0-real-device-verification.md</code></p>
+<h1>Soundcore P30i (A3959) — BLE GATT 診断ページ v2</h1>
+<p class="note">v2変更点: エラーを必ずログへ出力 / GATT切断イベントのログ / サービスUUID探索範囲を拡大（±1024、ワイド按钮 ±8192）。手順書: <code>docs/phase0-real-device-verification.md</code></p>
 
 <h2>1. デバイス選択</h2>
-<button id="btnConnect">デバイス選択＋接続</button>
+<button id="btnConnect">デバイス選択＋接続 (範囲±1024)</button>
+<button id="btnConnectWide">デバイス選択＋接続 (ワイド範囲±8192)</button>
 <span id="devName"></span>
 
 <h2>2. サービス / 特性 列挙</h2>
@@ -47,10 +48,10 @@
 
 <script>
 "use strict";
-// v1 lib/src/device_utils.rs と同じ方式: 011cf5da-... を中心に先頭2バイト ±32 のUUID族を列挙
-function serviceUuids() {
-  const center = 0x011c, range = 32, out = [];
-  for (let i = center - range; i <= center + range; i++) {
+// v1 lib/src/device_utils.rs と同じ方式: 011cf5da-... を中心に先頭2バイト ±range のUUID族を列挙
+function serviceUuids(range) {
+  const center = 0x011c, out = [];
+  for (let i = Math.max(0, center - range); i <= center + range; i++) {
     out.push(i.toString(16).padStart(4, "0") + "f5da-0000-1000-8000-00805f9b34fb");
   }
   return out;
@@ -68,61 +69,96 @@ function log(msg) {
   logEl.textContent = logText;
   logEl.scrollTop = logEl.scrollHeight;
 }
+window.addEventListener("unhandledrejection", (e) => {
+  log("UNHANDLED REJECTION: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+});
 function hex(bytes) { return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join(" "); }
 function isSoundcoreService(uuid) { return /f5da-0000-1000-8000-00805f9b34fb$/.test(uuid); }
 
-document.getElementById("btnConnect").onclick = async () => {
+async function connect(range) {
   if (!navigator.bluetooth) { log("ERROR: このブラウザは Web Bluetooth 非対応"); return; }
+  log(`requestDevice (acceptAllDevices, optionalServices range=±${range}, ${2 * range + 1} uuids)...`);
   device = await navigator.bluetooth.requestDevice({
     acceptAllDevices: true,
-    optionalServices: serviceUuids(),
+    optionalServices: serviceUuids(range),
   });
-  document.getElementById("devName").innerHTML = `選択: <b>${device.name || "(名前なし)"}</b> id=${device.id}`;
-  log(`device selected: name=${device.name} id=${device.id}`);
+  document.getElementById("devName").innerHTML = `選択: <b>${device.name || "(名前なし)"}</b>`;
+  log(`device selected: name=${device.name}`);
+  device.addEventListener("gattserverdisconnected", () => log("WARN: gattserverdisconnected イベント発火（デバイス側から切断されました）"));
+  log("gatt.connect() ...");
   server = await device.gatt.connect();
   log("gatt connected");
   document.getElementById("btnServices").disabled = false;
-};
+}
+document.getElementById("btnConnect").onclick = () => connect(1024).catch(e => log("ERROR connect: " + e));
+document.getElementById("btnConnectWide").onclick = () => connect(8192).catch(e => log("ERROR connect(wide): " + e));
 
 document.getElementById("btnServices").onclick = async () => {
-  const services = await server.getPrimaryServices();
-  let html = "<table><tr><th>service</th><th>characteristic</th><th>properties</th><th>判定</th></tr>";
-  let found = false;
-  for (const s of services) {
-    const suuid = s.uuid;
-    const chars = await s.getCharacteristics();
-    for (const c of chars) {
-      const props = Object.entries(c.properties).filter(([, v]) => v === true).map(([k]) => k).join(",");
-      let verdict = "";
-      if (isSoundcoreService(suuid)) {
-        if (c.uuid === WRITE_UUID) { writeChar = c; verdict = '<span class="ok">v1 WRITE特性</span>'; found = true; }
-        else if (c.uuid === READ_UUID) { readChar = c; verdict = '<span class="ok">v1 READ特性</span>'; found = true; }
-        else verdict = '<span class="warn">soundcoreサービス内</span>';
-      }
-      html += `<tr><td>${suuid}</td><td>${c.uuid}</td><td>${props}</td><td>${verdict}</td></tr>`;
+  try {
+    if (!server || !server.connected) {
+      log("WARN: server が未接続の状態です。再接続してください");
     }
+    log("getPrimaryServices() 呼び出し中...");
+    const services = await server.getPrimaryServices();
+    log(`getPrimaryServices resolved: ${services.length} service(s)`);
+    let html = "<table><tr><th>service</th><th>characteristic</th><th>properties</th><th>判定</th></tr>";
+    let found = false;
+    for (const s of services) {
+      const suuid = s.uuid;
+      let chars = [];
+      try {
+        chars = await s.getCharacteristics();
+      } catch (e) {
+        log(`WARN: getCharacteristics failed for ${suuid}: ${e}`);
+      }
+      for (const c of chars) {
+        const props = Object.entries(c.properties).filter(([, v]) => v === true).map(([k]) => k).join(",");
+        let verdict = "";
+        if (isSoundcoreService(suuid)) {
+          if (c.uuid === WRITE_UUID) { writeChar = c; verdict = '<span class="ok">v1 WRITE特性</span>'; found = true; }
+          else if (c.uuid === READ_UUID) { readChar = c; verdict = '<span class="ok">v1 READ特性</span>'; found = true; }
+          else verdict = '<span class="warn">soundcoreサービス内</span>';
+        }
+        html += `<tr><td>${suuid}</td><td>${c.uuid}</td><td>${props}</td><td>${verdict}</td></tr>`;
+      }
+    }
+    html += "</table>";
+    if (services.length === 0) {
+      html += '<p class="bad">許可リスト内のGATTサービスが0件です。デバイスのサービスUUIDが現在の範囲(±1024)外可能性があります。「ワイド範囲±8192」で再接続して再度列挙してください。</p>';
+    } else if (!found) {
+      html += '<p class="warn">soundcoreサービス族(…f5da…)または 7777/8888 特性が見つかりません。上の表のUUIDを全て報告してください（ワイド範囲での再接続もお試しください）。</p>';
+    } else {
+      html += '<p class="ok">v1互換の WRITE/READ 特性を発見。次のステップへ進めます。</p>';
+    }
+    document.getElementById("services").innerHTML = html;
+    log(`enumerated ${services.length} services; write=${!!writeChar} read=${!!readChar}`);
+    document.getElementById("btnNotify").disabled = !readChar;
+    document.getElementById("btnRequest").disabled = !writeChar;
+  } catch (e) {
+    log("ERROR enumerate: " + (e && e.message ? e.message : e));
   }
-  html += "</table>";
-  if (!found) html += '<p class="bad">v1の 7777/8888 特性が見つかりません。サービスUUID族が範囲外か、GATT非露出の可能性があります。上の表のUUIDを記録してください。</p>';
-  else html += '<p class="ok">v1互換の WRITE/READ 特性を発見。次のステップへ進めます。</p>';
-  document.getElementById("services").innerHTML = html;
-  log(`enumerated ${services.length} services; write=${!!writeChar} read=${!!readChar}`);
-  document.getElementById("btnNotify").disabled = !readChar;
-  document.getElementById("btnRequest").disabled = !writeChar;
 };
 
 document.getElementById("btnNotify").onclick = async () => {
-  readChar.addEventListener("characteristicvaluechanged", (e) => {
-    const v = new Uint8Array(e.target.value.buffer);
-    log(`NOTIFY len=${v.length}\n  ${hex(v)}`);
-  });
-  await readChar.startNotifications();
-  log("notifications started on " + READ_UUID);
+  try {
+    readChar.addEventListener("characteristicvaluechanged", (e) => {
+      const v = new Uint8Array(e.target.value.buffer);
+      log(`NOTIFY len=${v.length}\n  ${hex(v)}`);
+    });
+    await readChar.startNotifications();
+    log("notifications started on " + READ_UUID);
+  } catch (e) {
+    log("ERROR notify: " + (e && e.message ? e.message : e));
+  }
 };
 
 document.getElementById("btnRequest").onclick = async () => {
-  await writeChar.writeValueWithResponse(STATE_REQUEST);
-  log("state request written: " + hex(STATE_REQUEST));
+  try {
+    await writeChar.writeValueWithResponse(STATE_REQUEST);
+    log("state request written: " + hex(STATE_REQUEST));
+  } catch (e) {
+    log("ERROR write: " + (e && e.message ? e.message : e));
+  }
 };
 
 document.getElementById("btnCopy").onclick = async () => {
