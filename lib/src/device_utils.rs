@@ -29,7 +29,7 @@ pub fn is_soundcore_service_uuid(uuid: &Uuid) -> bool {
 /// This should hopefully cover all devices, and if not, the range can be increased.
 pub fn service_uuids() -> Vec<Uuid> {
     // how far plus and minus to go surrounding SERVICE_UUID
-    const RANGE: u128 = 32;
+    const RANGE: u128 = 256;
 
     const COMMON_PART: u128 = SERVICE_UUID.as_u128() & SERVICE_UUID_MASK.as_u128();
 
@@ -52,7 +52,7 @@ pub fn service_uuids() -> Vec<Uuid> {
 
 // All mac address prefixes owned by the following companies should be listed here.
 // See: http://standards-oui.ieee.org/oui/oui.csv
-const MAC_ADDRESS_PREFIXES: [[u8; 3]; 8] = [
+const MAC_ADDRESS_PREFIXES: [[u8; 3]; 9] = [
     // Fantasia Trading LLC
     [0xAC, 0x12, 0x2F],
     [0xE8, 0xEE, 0xCC],
@@ -65,6 +65,8 @@ const MAC_ADDRESS_PREFIXES: [[u8; 3]; 8] = [
     // ???
     [0xE4, 0x9E, 0x58],
     [0x88, 0x0E, 0x85],
+    // Observed on a real Soundcore P30i (A3959); derived from its serial number
+    [0xA4, 0xC1, 0x39],
 ];
 pub fn soundcore_mac_address_prefixes() -> &'static [[u8; 3]] {
     &MAC_ADDRESS_PREFIXES

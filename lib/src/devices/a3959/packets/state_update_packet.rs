@@ -210,7 +210,8 @@ mod tests {
     use nom::error::VerboseError;
 
     use crate::devices::standard::structures::{
-        AmbientSoundMode, HostDevice, MultiSceneNoiseCanceling, NoiseCancelingModeTypeThree,
+        AmbientSoundMode, Battery, HostDevice, MultiSceneNoiseCanceling,
+        NoiseCancelingModeTypeThree,
     };
 
     use super::*;
@@ -292,6 +293,63 @@ mod tests {
         assert!(!packet.surround_sound);
         assert!(packet.low_battery_prompt);
         assert!(!packet.gaming_mode);
+    }
+
+    /// state update captured from a real Soundcore P30i (2026-09-23, firmware 01.44,
+    /// ambient sound mode = transparency, noise canceling off)
+    const REAL_DEVICE_STATE_UPDATE: &[u8] = &[
+        0x00, 0x01, 0x09, 0x09, 0xff, 0xff, 0x30, 0x31, 0x2e, 0x34, 0x34, 0x30, 0x31, 0x2e, 0x34,
+        0x34, 0x33, 0x39, 0x35, 0x39, 0x39, 0x43, 0x32, 0x43, 0x33, 0x31, 0x33, 0x39, 0x43, 0x31,
+        0x41, 0x34, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0xff, 0xff, 0x63, 0x66, 0xff,
+        0xff, 0x44, 0x44, 0x33, 0x01, 0x55, 0x00, 0x00, 0x00, 0xff, 0x00, 0x36, 0x01, 0x01, 0x00,
+        0x01, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00,
+    ];
+
+    #[test]
+    fn it_parses_a_real_device_state_update() {
+        let (remaining, packet) =
+            A3959StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE)
+                .expect("should parse");
+        assert!(remaining.is_empty());
+
+        assert_eq!(packet.tws_status.host_device, HostDevice::Left);
+        assert!(packet.tws_status.is_connected);
+        assert_eq!(packet.left_battery, 9);
+        assert_eq!(packet.right_battery, 9);
+        assert_eq!(packet.firmware_version_left, FirmwareVersion::new(1, 44));
+        assert_eq!(packet.serial_number.as_str(), "39599C2C3139C1A4");
+        assert_eq!(packet.preserve_byte, 0x0a);
+        assert_eq!(packet.buttons_raw, [0xff, 0xff, 0x63, 0x66, 0xff, 0xff, 0x44, 0x44]);
+
+        assert_eq!(
+            packet.sound_modes,
+            SoundModesTypeThree {
+                ambient_sound_mode: AmbientSoundMode::Transparency,
+                manual_noise_canceling: 5,
+                adaptive_noise_canceling: 5,
+                noise_canceling_mode: NoiseCancelingModeTypeThree::Manual,
+                wind_noise_suppression: false,
+                wind_noise_detected: false,
+                noise_canceling_adaptive_sensitivity_level: 255,
+                multi_scene_noise_canceling: MultiSceneNoiseCanceling::Transport,
+            }
+        );
+
+        assert!(packet.dual_connections);
+        assert!(!packet.surround_sound);
+        assert!(packet.low_battery_prompt);
+        assert!(!packet.gaming_mode);
+
+        let state_update: StateUpdatePacket = packet.into();
+        match &state_update.battery {
+            Battery::DualBattery(dual) => {
+                assert_eq!(dual.left.level.0, 90);
+                assert_eq!(dual.right.level.0, 90);
+            }
+            Battery::SingleBattery(_) => panic!("expected dual battery"),
+        }
     }
 
     #[test]

@@ -1,0 +1,52 @@
+name: Build preview dist
+
+on:
+  push:
+    branches: [feature/p30i-a3959-web-support]
+    paths:
+      - "lib/**"
+      - "web/**"
+      - ".github/workflows/build-preview.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Rust 1.84.1
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.84.1
+
+      - name: Install Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Install npm dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build web
+        working-directory: web
+        run: npm run build
+
+      - name: Publish dist to preview-dist branch
+        run: |
+          cd web/dist
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "preview dist from ${GITHUB_SHA}"
+          git push -f --quiet "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:preview-dist
