@@ -40,7 +40,13 @@ impl OutboundPacket for SetEqualizerMonoPreservedDrcPacket<'_> {
     fn body(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(22);
         bytes.extend(self.configuration.profile_id().to_le_bytes());
-        bytes.extend(self.configuration.volume_adjustments().bytes());
+        let bands: Vec<u8> = self.configuration.volume_adjustments().bytes().collect();
+        bytes.extend(bands.iter().copied());
+        // the A3959 equalizer has 10 bands; pad with 0.0 dB when the configuration
+        // carries fewer values (e.g. seeded from an 8 band preset profile)
+        for _ in bands.len()..10 {
+            bytes.push(120);
+        }
         bytes.extend(self.preserved_drc);
         bytes
     }

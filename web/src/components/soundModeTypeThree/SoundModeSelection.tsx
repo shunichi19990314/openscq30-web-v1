@@ -113,7 +113,7 @@ export const SoundModeSelection = React.memo(function ({
         <div>
           <Typography>
             {t("manualNoiseCanceling.manualNoiseCanceling")}:{" "}
-            {soundModes.manualNoiseCanceling}/5
+            {Math.min(5, soundModes.manualNoiseCanceling)}/5
           </Typography>
           <Slider
             min={0}
@@ -121,7 +121,7 @@ export const SoundModeSelection = React.memo(function ({
             step={1}
             marks
             valueLabelDisplay="auto"
-            value={soundModes.manualNoiseCanceling}
+            value={Math.min(5, soundModes.manualNoiseCanceling)}
             onChange={(_, value) => setManualNoiseCanceling(value as number)}
           />
         </div>
@@ -137,7 +137,7 @@ export const SoundModeSelection = React.memo(function ({
           <div>
             <Typography>
               {t("soundModeTypeThree.adaptiveSensitivity")}:{" "}
-              {soundModes.noiseCancelingAdaptiveSensitivityLevel}/10
+              {Math.min(10, soundModes.noiseCancelingAdaptiveSensitivityLevel)}/10
             </Typography>
             <Slider
               min={0}
@@ -145,7 +145,7 @@ export const SoundModeSelection = React.memo(function ({
               step={1}
               marks
               valueLabelDisplay="auto"
-              value={soundModes.noiseCancelingAdaptiveSensitivityLevel}
+              value={Math.min(10, soundModes.noiseCancelingAdaptiveSensitivityLevel)}
               onChange={(_, value) => setAdaptiveSensitivity(value as number)}
             />
           </div>

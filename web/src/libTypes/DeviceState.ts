@@ -71,8 +71,8 @@ const soundModesTypeThreeSchema = Type.Object({
     Type.Literal("transparency"),
     Type.Literal("normal"),
   ]),
-  manualNoiseCanceling: Type.Number({ minimum: 0, maximum: 5 }),
-  adaptiveNoiseCanceling: Type.Number({ minimum: 0, maximum: 5 }),
+  manualNoiseCanceling: Type.Number({ minimum: 0, maximum: 255 }),
+  adaptiveNoiseCanceling: Type.Number({ minimum: 0, maximum: 255 }),
   noiseCancelingMode: Type.Union([
     Type.Literal("manual"),
     Type.Literal("adaptive"),
@@ -82,7 +82,7 @@ const soundModesTypeThreeSchema = Type.Object({
   windNoiseDetected: Type.Boolean(),
   noiseCancelingAdaptiveSensitivityLevel: Type.Number({
     minimum: 0,
-    maximum: 10,
+    maximum: 255,
   }),
   multiSceneNoiseCanceling: Type.Union([
     Type.Literal("transport"),

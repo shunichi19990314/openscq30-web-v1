@@ -88,6 +88,23 @@ async function connect(range) {
   log("gatt.connect() ...");
   server = await device.gatt.connect();
   log("gatt connected");
+  try {
+    await device.watchAdvertisements();
+    let advLogged = false;
+    device.addEventListener("advertisementreceived", (ev) => {
+      if (advLogged) return;
+      advLogged = true;
+      const md = ev.manufacturerDataMap || {};
+      for (const [companyId, dataView] of md.entries ? md.entries() : []) {
+        const bytes = new Uint8Array(dataView.buffer);
+        log(`ADVERTISEMENT manufacturerData company=0x${companyId.toString(16)} data=${hex(bytes)}`);
+      }
+      if (ev.uuids) log(`ADVERTISEMENT uuids: ${ev.uuids.join(", ")}`);
+    });
+    log("watchAdvertisements started (広告パケットを1回ログします)");
+  } catch (e) {
+    log("watchAdvertisements unsupported: " + e);
+  }
   document.getElementById("btnServices").disabled = false;
 }
 document.getElementById("btnConnect").onclick = () => connect(1024).catch(e => log("ERROR connect: " + e));
