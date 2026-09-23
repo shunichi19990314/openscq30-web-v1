@@ -62,6 +62,25 @@ mod tests {
     use super::*;
 
     #[test]
+    fn it_pads_an_eight_band_configuration_to_ten_bands() {
+        use crate::devices::standard::structures::PresetEqualizerProfile;
+        let configuration =
+            EqualizerConfiguration::new_from_preset_profile(PresetEqualizerProfile::Acoustic);
+        let packet = SetEqualizerMonoPreservedDrcPacket {
+            configuration: &configuration,
+            preserved_drc: &[0; 10],
+        };
+        let bytes = packet.bytes();
+        // 7 command + len + 0x00 + 22 body + checksum
+        assert_eq!(bytes.len(), 32);
+        let body = &bytes[9..31];
+        assert_eq!(&body[0..2], &[0x01, 0x00]); // Acoustic profile id (le)
+        // 8 preset bands + 2 padded 0.0 dB bands
+        assert_eq!(body[2..12].iter().filter(|b| **b == 120).count(), 2);
+        assert_eq!(&body[12..22], &[0; 10]); // preserved drc
+    }
+
+    #[test]
     fn set_sound_mode_type_three_matches_the_v2_packet() {
         // body taken from the v2 test `set_manual_noise_canceling` (command [0x06, 0x81],
         // body [0, 37, 0, 0, 1, 255, 1]); v1 framing adds the length byte and checksum suffix

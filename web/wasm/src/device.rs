@@ -156,9 +156,10 @@ impl Device {
             while let Ok(()) = receiver.changed().await {
                 let state = receiver.borrow_and_update();
                 let json = serde_json::to_string(&*state).unwrap();
-                callback
-                    .call1(&JsValue::null(), &json.into())
-                    .expect("error handling should be done in javascript");
+                // the JS callback handles errors internally (try/catch + console.error);
+                // never panic here, because a panic would trap the whole wasm instance and
+                // look like a device disconnect to the user
+                let _ = callback.call1(&JsValue::null(), &json.into());
             }
         })
     }
