@@ -29,6 +29,19 @@
    - [ ] 先頭バイト列が `09 ff 00 00 01 01 01` で始まるか
 8. 任意: イヤホン側でANCモードを切り替えて再度送信し、差分バイトを観察（サウンドモードバイト位置の検証）。
 
+## 1.5 Renderでホストする場合（localhost不要）
+
+Web BluetoothはHTTPS（secure context）でも動作するため、RenderのStatic Siteとして配信できる。
+
+1. Render Dashboard → **New → Static Site**
+2. Repository: `shunichi19990314/openscq30-web-v1`
+3. **Branch: `feature/p30i-a3959-web-support`**（main＝本番distとは別サイトにする）
+4. Name: 例 `openscq30-ble-check`
+5. Build Command: **空欄** / Publish Directory: **`tools`**
+6. Create Static Site → デプロイ完了後 `https://<name>.onrender.com/` （index.htmlが診断ページへリダイレクト）
+
+注意: 本番サイト（branch: main）の設定は変更しないこと。検証終了後はこの検証用サイトを削除すればよい。
+
 ## 2. 代替手段A: Chrome bluetooth-internals
 
 1. `about://bluetooth-internals/#devices` → Scan → P30i を Inspect。
