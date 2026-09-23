@@ -23,6 +23,7 @@ pub enum DeviceModel {
     A3951,
     A3939,
     A3935,
+    A3959,
 }
 
 impl DeviceModel {

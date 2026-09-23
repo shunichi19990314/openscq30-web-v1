@@ -49,6 +49,11 @@ impl From<A3028StateUpdatePacket> for StateUpdatePacket {
             firmware_version: Some(packet.firmware_version),
             serial_number: Some(packet.serial_number),
             ambient_sound_mode_cycle: None,
+            sound_modes_type_three: None,
+            gaming_mode: None,
+            surround_sound: None,
+            dual_connections: None,
+            low_battery_prompt: None,
             sound_modes_type_two: None,
         }
     }

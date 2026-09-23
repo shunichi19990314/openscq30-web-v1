@@ -13,7 +13,8 @@ use crate::{
 };
 
 use super::structures::{
-    AmbientSoundModeCycle, MultiButtonConfiguration, SoundModesTypeTwo, TwsStatus,
+    AmbientSoundModeCycle, MultiButtonConfiguration, SoundModesTypeTwo,
+    SoundModesTypeThree, TwsStatus,
 };
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -33,6 +34,11 @@ pub struct DeviceState {
     pub firmware_version: Option<FirmwareVersion>,
     pub serial_number: Option<SerialNumber>,
     pub ambient_sound_mode_cycle: Option<AmbientSoundModeCycle>,
+    pub sound_modes_type_three: Option<SoundModesTypeThree>,
+    pub gaming_mode: Option<bool>,
+    pub surround_sound: Option<bool>,
+    pub dual_connections: Option<bool>,
+    pub low_battery_prompt: Option<bool>,
 }
 
 impl From<StateUpdatePacket> for DeviceState {
@@ -51,6 +57,11 @@ impl From<StateUpdatePacket> for DeviceState {
             firmware_version: packet.firmware_version,
             serial_number: packet.serial_number.clone(),
             ambient_sound_mode_cycle: packet.ambient_sound_mode_cycle,
+            sound_modes_type_three: packet.sound_modes_type_three,
+            gaming_mode: packet.gaming_mode,
+            surround_sound: packet.surround_sound,
+            dual_connections: packet.dual_connections,
+            low_battery_prompt: packet.low_battery_prompt,
         }
     }
 }

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>P30i (A3959) BLE GATT 診断</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; color: #222; line-height: 1.55; }
+  h1 { font-size: 1.35rem; color: #474e3d; }
+  h2 { font-size: 1.05rem; margin: 1.4rem 0 .4rem; border-left: 4px solid #474e3d; padding-left: 8px; }
+  button { background: #474e3d; color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; margin: 4px 6px 4px 0; cursor: pointer; font-size: .92rem; }
+  button:disabled { background: #9aa093; cursor: not-allowed; }
+  code, pre { background: #f2f2ee; border-radius: 4px; }
+  pre { padding: 10px; overflow-x: auto; font-size: .82rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+  th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; vertical-align: top; }
+  .ok { color: #1a7f37; font-weight: 600; }
+  .warn { color: #9a6700; font-weight: 600; }
+  .bad { color: #cf222e; font-weight: 600; }
+  .log { white-space: pre-wrap; word-break: break-all; background: #101410; color: #d7e3d0; padding: 10px; border-radius: 6px; font-size: .8rem; max-height: 340px; overflow-y: auto; }
+  .note { background: #fff8e1; border: 1px solid #e6c86e; border-radius: 6px; padding: 8px 12px; font-size: .88rem; }
+</style>
+</head>
+<body>
+<h1>Soundcore P30i (A3959) — BLE GATT 診断ページ</h1>
+<p class="note">Web Bluetooth は Chrome / Edge ＋ secure context (localhost / https) 必須。v1 Web版と同じ GATT サービス族・特性UUIDを使って、P30i が同じプロトコルで応答するかを確認します。手順書: <code>docs/phase0-real-device-verification.md</code></p>
+
+<h2>1. デバイス選択</h2>
+<button id="btnConnect">デバイス選択＋接続</button>
+<span id="devName"></span>
+
+<h2>2. サービス / 特性 列挙</h2>
+<button id="btnServices" disabled>サービス列挙</button>
+<div id="services"></div>
+
+<h2>3. 通知購読 (0x8888 特性)</h2>
+<button id="btnNotify" disabled>通知購読開始</button>
+
+<h2>4. 状態要求送信 (0x7777 特性)</h2>
+<button id="btnRequest" disabled>状態要求を送信</button>
+<pre>08 ee 00 00 00 01 01 0a 00 02</pre>
+
+<h2>受信ログ</h2>
+<div class="log" id="log">(まだ何もありません)</div>
+<button id="btnCopy">ログをコピー</button>
+<button id="btnClear">ログクリア</button>
+
+<script>
+"use strict";
+// v1 lib/src/device_utils.rs と同じ方式: 011cf5da-... を中心に先頭2バイト ±32 のUUID族を列挙
+function serviceUuids() {
+  const center = 0x011c, range = 32, out = [];
+  for (let i = center - range; i <= center + range; i++) {
+    out.push(i.toString(16).padStart(4, "0") + "f5da-0000-1000-8000-00805f9b34fb");
+  }
+  return out;
+}
+const WRITE_UUID = "00007777-0000-1000-8000-00805f9b34fb";
+const READ_UUID  = "00008888-0000-1000-8000-00805f9b34fb";
+const STATE_REQUEST = new Uint8Array([0x08,0xee,0x00,0x00,0x00,0x01,0x01,0x0a,0x00,0x02]);
+
+let device = null, server = null, writeChar = null, readChar = null;
+const logEl = document.getElementById("log");
+let logText = "";
+function log(msg) {
+  const ts = new Date().toISOString().substr(11, 12);
+  logText += `[${ts}] ${msg}\n`;
+  logEl.textContent = logText;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function hex(bytes) { return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join(" "); }
+function isSoundcoreService(uuid) { return /f5da-0000-1000-8000-00805f9b34fb$/.test(uuid); }
+
+document.getElementById("btnConnect").onclick = async () => {
+  if (!navigator.bluetooth) { log("ERROR: このブラウザは Web Bluetooth 非対応"); return; }
+  device = await navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: serviceUuids(),
+  });
+  document.getElementById("devName").innerHTML = `選択: <b>${device.name || "(名前なし)"}</b> id=${device.id}`;
+  log(`device selected: name=${device.name} id=${device.id}`);
+  server = await device.gatt.connect();
+  log("gatt connected");
+  document.getElementById("btnServices").disabled = false;
+};
+
+document.getElementById("btnServices").onclick = async () => {
+  const services = await server.getPrimaryServices();
+  let html = "<table><tr><th>service</th><th>characteristic</th><th>properties</th><th>判定</th></tr>";
+  let found = false;
+  for (const s of services) {
+    const suuid = s.uuid;
+    const chars = await s.getCharacteristics();
+    for (const c of chars) {
+      const props = Object.entries(c.properties).filter(([, v]) => v === true).map(([k]) => k).join(",");
+      let verdict = "";
+      if (isSoundcoreService(suuid)) {
+        if (c.uuid === WRITE_UUID) { writeChar = c; verdict = '<span class="ok">v1 WRITE特性</span>'; found = true; }
+        else if (c.uuid === READ_UUID) { readChar = c; verdict = '<span class="ok">v1 READ特性</span>'; found = true; }
+        else verdict = '<span class="warn">soundcoreサービス内</span>';
+      }
+      html += `<tr><td>${suuid}</td><td>${c.uuid}</td><td>${props}</td><td>${verdict}</td></tr>`;
+    }
+  }
+  html += "</table>";
+  if (!found) html += '<p class="bad">v1の 7777/8888 特性が見つかりません。サービスUUID族が範囲外か、GATT非露出の可能性があります。上の表のUUIDを記録してください。</p>';
+  else html += '<p class="ok">v1互換の WRITE/READ 特性を発見。次のステップへ進めます。</p>';
+  document.getElementById("services").innerHTML = html;
+  log(`enumerated ${services.length} services; write=${!!writeChar} read=${!!readChar}`);
+  document.getElementById("btnNotify").disabled = !readChar;
+  document.getElementById("btnRequest").disabled = !writeChar;
+};
+
+document.getElementById("btnNotify").onclick = async () => {
+  readChar.addEventListener("characteristicvaluechanged", (e) => {
+    const v = new Uint8Array(e.target.value.buffer);
+    log(`NOTIFY len=${v.length}\n  ${hex(v)}`);
+  });
+  await readChar.startNotifications();
+  log("notifications started on " + READ_UUID);
+};
+
+document.getElementById("btnRequest").onclick = async () => {
+  await writeChar.writeValueWithResponse(STATE_REQUEST);
+  log("state request written: " + hex(STATE_REQUEST));
+};
+
+document.getElementById("btnCopy").onclick = async () => {
+  await navigator.clipboard.writeText(logText);
+  document.getElementById("btnCopy").textContent = "コピーしました";
+};
+document.getElementById("btnClear").onclick = () => { logText = ""; logEl.textContent = ""; };
+</script>
+</body>
+</html>

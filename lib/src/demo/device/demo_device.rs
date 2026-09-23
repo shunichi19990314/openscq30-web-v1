@@ -110,6 +110,11 @@ where
             firmware_version: Some(FirmwareVersion::new(2, 0)),
             serial_number: Some(SerialNumber("0123456789ABCDEF".into())),
             ambient_sound_mode_cycle: Some(AmbientSoundModeCycle::default()),
+            sound_modes_type_three: None,
+            gaming_mode: None,
+            surround_sound: None,
+            dual_connections: None,
+            low_battery_prompt: None,
             sound_modes_type_two: Some(SoundModesTypeTwo::default()),
             tws_status: Some(TwsStatus {
                 is_connected: true,
@@ -212,6 +217,11 @@ where
         tracing::info!("set ambient sound mode cycle to {cycle:?}");
         state_sender.send_replace(DeviceState {
             ambient_sound_mode_cycle: Some(cycle),
+            sound_modes_type_three: None,
+            gaming_mode: None,
+            surround_sound: None,
+            dual_connections: None,
+            low_battery_prompt: None,
             ..state
         });
         Ok(())

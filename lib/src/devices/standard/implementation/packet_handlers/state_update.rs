@@ -40,5 +40,12 @@ pub fn state_update_handler(input: &[u8], state: DeviceState) -> DeviceState {
         ambient_sound_mode_cycle: packet
             .ambient_sound_mode_cycle
             .or(state.ambient_sound_mode_cycle),
+        sound_modes_type_three: packet
+            .sound_modes_type_three
+            .or(state.sound_modes_type_three),
+        gaming_mode: packet.gaming_mode.or(state.gaming_mode),
+        surround_sound: packet.surround_sound.or(state.surround_sound),
+        dual_connections: packet.dual_connections.or(state.dual_connections),
+        low_battery_prompt: packet.low_battery_prompt.or(state.low_battery_prompt),
     }
 }

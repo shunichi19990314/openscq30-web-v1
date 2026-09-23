@@ -16,6 +16,7 @@ use crate::{
         a3936::device_profile::A3936_DEVICE_PROFILE,
         a3945::device_profile::A3945_DEVICE_PROFILE,
         a3951::device_profile::A3951_DEVICE_PROFILE,
+        a3959::device_profile::A3959_DEVICE_PROFILE,
         standard::structures::{
             AmbientSoundMode, FirmwareVersion, NoiseCancelingMode, SerialNumber, TransparencyMode,
         },
@@ -98,6 +99,7 @@ const DEVICE_PROFILES: &[&DeviceProfile] = &[
     &A3936_DEVICE_PROFILE,
     &A3945_DEVICE_PROFILE,
     &A3951_DEVICE_PROFILE,
+    &A3959_DEVICE_PROFILE,
 ];
 
 #[allow(dead_code)]

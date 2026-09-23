@@ -49,6 +49,11 @@ impl From<A3931StateUpdatePacket> for StateUpdatePacket {
             firmware_version: None,
             serial_number: None,
             ambient_sound_mode_cycle: None,
+            sound_modes_type_three: None,
+            gaming_mode: None,
+            surround_sound: None,
+            dual_connections: None,
+            low_battery_prompt: None,
             sound_modes_type_two: None,
         }
     }

@@ -4,7 +4,7 @@ use crate::devices::standard::{
     state::DeviceState,
     structures::{
         AmbientSoundModeCycle, Command, EqualizerConfiguration, HearId, MultiButtonConfiguration,
-        SoundModes, SoundModesTypeTwo,
+        SoundModes, SoundModesTypeTwo, SoundModesTypeThree,
     },
 };
 
@@ -28,6 +28,16 @@ pub trait DeviceImplementation {
         state: DeviceState,
         sound_modes: SoundModesTypeTwo,
     ) -> crate::Result<CommandResponse>;
+
+    fn set_sound_modes_type_three(
+        &self,
+        _state: DeviceState,
+        _sound_modes: SoundModesTypeThree,
+    ) -> crate::Result<CommandResponse> {
+        Err(crate::Error::FeatureNotSupported {
+            feature_name: "sound modes type three",
+        })
+    }
 
     fn set_ambient_sound_mode_cycle(
         &self,

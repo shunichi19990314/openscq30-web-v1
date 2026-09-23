@@ -19,10 +19,11 @@ use crate::{
         a3936::packets::A3936StateUpdatePacket,
         a3945::packets::A3945StateUpdatePacket,
         a3951::packets::A3951StateUpdatePacket,
+        a3959::packets::A3959StateUpdatePacket,
         standard::structures::{
             AgeRange, AmbientSoundModeCycle, Battery, Command, EqualizerConfiguration,
             FirmwareVersion, Gender, HearId, MultiButtonConfiguration, SerialNumber, SoundModes,
-            SoundModesTypeTwo, TwsStatus,
+            SoundModesTypeTwo, SoundModesTypeThree, TwsStatus,
         },
     },
 };
@@ -44,6 +45,11 @@ pub(crate) struct StateUpdatePacket {
     pub firmware_version: Option<FirmwareVersion>,
     pub serial_number: Option<SerialNumber>,
     pub ambient_sound_mode_cycle: Option<AmbientSoundModeCycle>,
+    pub sound_modes_type_three: Option<SoundModesTypeThree>,
+    pub gaming_mode: Option<bool>,
+    pub surround_sound: Option<bool>,
+    pub dual_connections: Option<bool>,
+    pub low_battery_prompt: Option<bool>,
 }
 
 impl InboundPacket for StateUpdatePacket {
@@ -66,6 +72,7 @@ impl InboundPacket for StateUpdatePacket {
             map(A3933StateUpdatePacket::take, StateUpdatePacket::from),
             map(A3936StateUpdatePacket::take, StateUpdatePacket::from),
             map(A3945StateUpdatePacket::take, StateUpdatePacket::from),
+            map(A3959StateUpdatePacket::take, StateUpdatePacket::from),
         ))(input)
     }
 }
