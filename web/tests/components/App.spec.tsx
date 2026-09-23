@@ -37,6 +37,10 @@ describe("App", () => {
                 hasAutoPowerOff: false,
                 dynamicRangeCompressionMinFirmwareVersion: null,
                 hasAmbientSoundModeCycle: false,
+      hasGamingMode: false,
+      hasSurroundSound: false,
+      hasDualConnections: false,
+      hasLowBatteryPrompt: false,
               },
               twsStatus: null,
               battery: {
@@ -66,6 +70,11 @@ describe("App", () => {
               firmwareVersion: null,
               serialNumber: null,
               ambientSoundModeCycle: null,
+      soundModesTypeThree: null,
+      gamingMode: null,
+      surroundSound: null,
+      dualConnections: null,
+      lowBatteryPrompt: null,
             }),
             connect: vi.fn<() => void>(),
             async setSoundModes(soundModes: SoundModes) {

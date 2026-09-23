@@ -150,5 +150,24 @@
     "spokenWord": "",
     "trebleBooster": "",
     "trebleReducer": ""
+  },
+  "soundModeTypeThree": {
+    "manual": "マニュアル",
+    "adaptive": "アダプティブ",
+    "multiScene": "マルチシーン",
+    "multiSceneNoiseCanceling": "マルチシーンノイズキャンセリング",
+    "multiSceneOptions": {
+      "transport": "交通機関",
+      "outdoor": "屋外",
+      "indoor": "室内"
+    },
+    "adaptiveSensitivity": "アダプティブノイズキャンセリング感度",
+    "windNoiseSuppression": "風切り音抑制"
+  },
+  "additionalSettings": {
+    "additionalSettings": "その他の設定",
+    "gamingMode": "ゲーミングモード",
+    "surroundSound": "サラウンドサウンド",
+    "lowBatteryPrompt": "バッテリー低下通知"
   }
 }

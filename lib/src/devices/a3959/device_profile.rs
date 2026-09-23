@@ -18,6 +18,7 @@ use crate::{
                 MultiButtonConfiguration, SoundModes, SoundModesTypeTwo, SoundModesTypeThree,
                 STATE_UPDATE,
             },
+            packets::outbound::SetFlagPacket,
         },
     },
     soundcore_device::{
@@ -25,6 +26,27 @@ use crate::{
         device_model::DeviceModel,
     },
 };
+
+/// command bytes match the v2 `SET_*_COMMAND` constants
+const SET_GAMING_MODE_COMMAND: Command = Command::new([0x08, 0xee, 0x00, 0x00, 0x00, 0x01, 0x87]);
+const SET_SURROUND_SOUND_COMMAND: Command = Command::new([0x08, 0xee, 0x00, 0x00, 0x00, 0x02, 0x86]);
+const SET_LOW_BATTERY_PROMPT_COMMAND: Command =
+    Command::new([0x08, 0xee, 0x00, 0x00, 0x00, 0x10, 0x82]);
+
+fn set_flag(
+    state: DeviceState,
+    enabled: bool,
+    command: Command,
+    apply: impl Fn(&mut DeviceState, bool),
+) -> crate::Result<CommandResponse> {
+    let packet = SetFlagPacket { command, enabled };
+    let mut new_state = state;
+    apply(&mut new_state, enabled);
+    Ok(CommandResponse {
+        packets: vec![packet.into()],
+        new_state,
+    })
+}
 
 pub(crate) const A3959_DEVICE_PROFILE: DeviceProfile = DeviceProfile {
     features: DeviceFeatures {
@@ -41,6 +63,10 @@ pub(crate) const A3959_DEVICE_PROFILE: DeviceProfile = DeviceProfile {
         has_auto_power_off: false,
         has_ambient_sound_mode_cycle: true,
         dynamic_range_compression_min_firmware_version: None,
+        has_gaming_mode: true,
+        has_surround_sound: true,
+        has_dual_connections: true,
+        has_low_battery_prompt: true,
     },
     compatible_models: &[DeviceModel::A3959],
     implementation: || Arc::new(A3959Implementation::default()),
@@ -132,6 +158,36 @@ impl DeviceImplementation for A3959Implementation {
         cycle: AmbientSoundModeCycle,
     ) -> crate::Result<CommandResponse> {
         standard::implementation::set_ambient_sound_mode_cycle(state, cycle)
+    }
+
+    fn set_gaming_mode(
+        &self,
+        state: DeviceState,
+        enabled: bool,
+    ) -> crate::Result<CommandResponse> {
+        set_flag(state, enabled, SET_GAMING_MODE_COMMAND, |state, v| {
+            state.gaming_mode = Some(v);
+        })
+    }
+
+    fn set_surround_sound(
+        &self,
+        state: DeviceState,
+        enabled: bool,
+    ) -> crate::Result<CommandResponse> {
+        set_flag(state, enabled, SET_SURROUND_SOUND_COMMAND, |state, v| {
+            state.surround_sound = Some(v);
+        })
+    }
+
+    fn set_low_battery_prompt(
+        &self,
+        state: DeviceState,
+        enabled: bool,
+    ) -> crate::Result<CommandResponse> {
+        set_flag(state, enabled, SET_LOW_BATTERY_PROMPT_COMMAND, |state, v| {
+            state.low_battery_prompt = Some(v);
+        })
     }
 
     fn set_equalizer_configuration(

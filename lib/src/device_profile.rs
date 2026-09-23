@@ -48,6 +48,10 @@ pub struct DeviceFeatures {
     pub has_auto_power_off: bool,
     pub has_ambient_sound_mode_cycle: bool,
     pub dynamic_range_compression_min_firmware_version: Option<FirmwareVersion>,
+    pub has_gaming_mode: bool,
+    pub has_surround_sound: bool,
+    pub has_dual_connections: bool,
+    pub has_low_battery_prompt: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Default)]

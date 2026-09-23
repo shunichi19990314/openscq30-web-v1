@@ -8,7 +8,7 @@ use crate::{
         state::DeviceState,
         structures::{
             AmbientSoundModeCycle, EqualizerConfiguration, HearId, MultiButtonConfiguration,
-            SoundModes, SoundModesTypeTwo,
+            SoundModes, SoundModesTypeTwo, SoundModesTypeThree,
         },
     },
 };
@@ -28,6 +28,33 @@ pub trait Device {
 
     async fn set_sound_modes(&self, sound_modes: SoundModes) -> crate::Result<()>;
     async fn set_sound_modes_type_two(&self, sound_modes: SoundModesTypeTwo) -> crate::Result<()>;
+
+    async fn set_sound_modes_type_three(
+        &self,
+        _sound_modes: SoundModesTypeThree,
+    ) -> crate::Result<()> {
+        Err(crate::Error::FeatureNotSupported {
+            feature_name: "sound modes type three",
+        })
+    }
+
+    async fn set_gaming_mode(&self, _enabled: bool) -> crate::Result<()> {
+        Err(crate::Error::FeatureNotSupported {
+            feature_name: "gaming mode",
+        })
+    }
+
+    async fn set_surround_sound(&self, _enabled: bool) -> crate::Result<()> {
+        Err(crate::Error::FeatureNotSupported {
+            feature_name: "surround sound",
+        })
+    }
+
+    async fn set_low_battery_prompt(&self, _enabled: bool) -> crate::Result<()> {
+        Err(crate::Error::FeatureNotSupported {
+            feature_name: "low battery prompt",
+        })
+    }
 
     async fn set_ambient_sound_mode_cycle(&self, cycle: AmbientSoundModeCycle)
         -> crate::Result<()>;

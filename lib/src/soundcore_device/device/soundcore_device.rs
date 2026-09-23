@@ -22,6 +22,7 @@ use crate::{
         structures::{
             AmbientSoundModeCycle, Command, EqualizerConfiguration, HearId,
             MultiButtonConfiguration, SoundModes, SoundModesTypeTwo,
+            SoundModesTypeThree,
         },
     },
     futures::{Futures, JoinHandle},
@@ -133,6 +134,30 @@ where
         })
     }
 
+    async fn set_flag(
+        &self,
+        enabled: bool,
+        name: &'static str,
+        get_prev: impl Fn(&DeviceState) -> Option<bool>,
+        build: impl Fn(
+            &(dyn DeviceImplementation + Send + Sync),
+            DeviceState,
+            bool,
+        ) -> crate::Result<CommandResponse>,
+    ) -> crate::Result<()> {
+        let state_sender = self.state_sender.lock().await;
+        let state = state_sender.borrow().to_owned();
+        let Some(prev) = get_prev(&state) else {
+            return Err(crate::Error::MissingData { name });
+        };
+        if prev == enabled {
+            return Ok(());
+        }
+
+        let response = build(&*self.implementation, state, enabled)?;
+        self.handle_response(response, &state_sender).await?;
+        Ok(())
+    }
     async fn handle_response(
         &self,
         response: CommandResponse,
@@ -224,6 +249,61 @@ where
         self.handle_response(response, &state_sender).await?;
         Ok(())
     }
+
+    async fn set_sound_modes_type_three(
+        &self,
+        sound_modes: SoundModesTypeThree,
+    ) -> crate::Result<()> {
+        let state_sender = self.state_sender.lock().await;
+        let state = state_sender.borrow().to_owned();
+        let Some(prev_sound_modes) = state.sound_modes_type_three else {
+            return Err(crate::Error::MissingData {
+                name: "sound modes type three",
+            });
+        };
+        if prev_sound_modes == sound_modes {
+            return Ok(());
+        }
+
+        let response = self
+            .implementation
+            .set_sound_modes_type_three(state, sound_modes)?;
+        self.handle_response(response, &state_sender).await?;
+        Ok(())
+    }
+
+    async fn set_gaming_mode(&self, enabled: bool) -> crate::Result<()> {
+        self.set_flag(
+            enabled,
+            "gaming mode",
+            |state| state.gaming_mode,
+            |implementation, state, enabled| implementation.set_gaming_mode(state, enabled),
+        )
+        .await
+    }
+
+    async fn set_surround_sound(&self, enabled: bool) -> crate::Result<()> {
+        self.set_flag(
+            enabled,
+            "surround sound",
+            |state| state.surround_sound,
+            |implementation, state, enabled| implementation.set_surround_sound(state, enabled),
+        )
+        .await
+    }
+
+    async fn set_low_battery_prompt(&self, enabled: bool) -> crate::Result<()> {
+        self.set_flag(
+            enabled,
+            "low battery prompt",
+            |state| state.low_battery_prompt,
+            |implementation, state, enabled| {
+                implementation.set_low_battery_prompt(state, enabled)
+            },
+        )
+        .await
+    }
+
 
     async fn set_ambient_sound_mode_cycle(
         &self,

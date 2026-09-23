@@ -9,6 +9,7 @@ use openscq30_lib::{
         state::DeviceState,
         structures::{
             EqualizerConfiguration, MultiButtonConfiguration, SoundModes, SoundModesTypeTwo,
+            SoundModesTypeThree,
         },
     },
     futures::WasmFutures,
@@ -70,6 +71,44 @@ impl Device {
             serde_json::from_str(&sound_modes).map_err(|err| format!("{err:?}"))?;
         self.inner
             .set_sound_modes_type_two(sound_modes)
+            .await
+            .map_err(|err| format!("{err:?}"))?;
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "setSoundModesTypeThree")]
+    pub async fn set_sound_modes_type_three(&self, sound_modes: String) -> Result<(), JsValue> {
+        let sound_modes: SoundModesTypeThree =
+            serde_json::from_str(&sound_modes).map_err(|err| format!("{err:?}"))?;
+        self.inner
+            .set_sound_modes_type_three(sound_modes)
+            .await
+            .map_err(|err| format!("{err:?}"))?;
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "setGamingMode")]
+    pub async fn set_gaming_mode(&self, enabled: bool) -> Result<(), JsValue> {
+        self.inner
+            .set_gaming_mode(enabled)
+            .await
+            .map_err(|err| format!("{err:?}"))?;
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "setSurroundSound")]
+    pub async fn set_surround_sound(&self, enabled: bool) -> Result<(), JsValue> {
+        self.inner
+            .set_surround_sound(enabled)
+            .await
+            .map_err(|err| format!("{err:?}"))?;
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "setLowBatteryPrompt")]
+    pub async fn set_low_battery_prompt(&self, enabled: bool) -> Result<(), JsValue> {
+        self.inner
+            .set_low_battery_prompt(enabled)
             .await
             .map_err(|err| format!("{err:?}"))?;
         Ok(())
@@ -171,6 +210,43 @@ impl DeviceImplementation {
             DeviceImplementation::Demo(device) => {
                 device.set_sound_modes_type_two(sound_modes).await
             }
+        }
+    }
+
+    pub async fn set_sound_modes_type_three(
+        &self,
+        sound_modes: SoundModesTypeThree,
+    ) -> openscq30_lib::Result<()> {
+        match self {
+            DeviceImplementation::WebBluetooth(device) => {
+                device.set_sound_modes_type_three(sound_modes).await
+            }
+            DeviceImplementation::Demo(device) => {
+                device.set_sound_modes_type_three(sound_modes).await
+            }
+        }
+    }
+
+    pub async fn set_gaming_mode(&self, enabled: bool) -> openscq30_lib::Result<()> {
+        match self {
+            DeviceImplementation::WebBluetooth(device) => device.set_gaming_mode(enabled).await,
+            DeviceImplementation::Demo(device) => device.set_gaming_mode(enabled).await,
+        }
+    }
+
+    pub async fn set_surround_sound(&self, enabled: bool) -> openscq30_lib::Result<()> {
+        match self {
+            DeviceImplementation::WebBluetooth(device) => device.set_surround_sound(enabled).await,
+            DeviceImplementation::Demo(device) => device.set_surround_sound(enabled).await,
+        }
+    }
+
+    pub async fn set_low_battery_prompt(&self, enabled: bool) -> openscq30_lib::Result<()> {
+        match self {
+            DeviceImplementation::WebBluetooth(device) => {
+                device.set_low_battery_prompt(enabled).await
+            }
+            DeviceImplementation::Demo(device) => device.set_low_battery_prompt(enabled).await,
         }
     }
 

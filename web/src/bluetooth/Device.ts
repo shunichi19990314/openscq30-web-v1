@@ -10,6 +10,7 @@ import {
   EqualizerConfiguration,
   SoundModes,
   SoundModesTypeTwo,
+  SoundModesTypeThree,
 } from "../libTypes/DeviceState";
 import { UnmodifiableBehaviorSubject } from "../UnmodifiableBehaviorSubject";
 import { DeviceStateValidationError } from "./StateValidationError";
@@ -52,6 +53,22 @@ export class Device {
 
   public async setSoundModesTypeTwo(soundModes: SoundModesTypeTwo) {
     await this.libDevice.setSoundModesTypeTwo(JSON.stringify(soundModes));
+  }
+
+  public async setSoundModesTypeThree(soundModes: SoundModesTypeThree) {
+    await this.libDevice.setSoundModesTypeThree(JSON.stringify(soundModes));
+  }
+
+  public async setGamingMode(enabled: boolean) {
+    await this.libDevice.setGamingMode(enabled);
+  }
+
+  public async setSurroundSound(enabled: boolean) {
+    await this.libDevice.setSurroundSound(enabled);
+  }
+
+  public async setLowBatteryPrompt(enabled: boolean) {
+    await this.libDevice.setLowBatteryPrompt(enabled);
   }
 
   public async setEqualizerConfiguration(

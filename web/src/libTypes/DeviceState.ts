@@ -65,6 +65,33 @@ const soundModesTypeTwoSchema = Type.Object({
 });
 export type SoundModesTypeTwo = Static<typeof soundModesTypeTwoSchema>;
 
+const soundModesTypeThreeSchema = Type.Object({
+  ambientSoundMode: Type.Union([
+    Type.Literal("noiseCanceling"),
+    Type.Literal("transparency"),
+    Type.Literal("normal"),
+  ]),
+  manualNoiseCanceling: Type.Number({ minimum: 0, maximum: 5 }),
+  adaptiveNoiseCanceling: Type.Number({ minimum: 0, maximum: 5 }),
+  noiseCancelingMode: Type.Union([
+    Type.Literal("manual"),
+    Type.Literal("adaptive"),
+    Type.Literal("multiScene"),
+  ]),
+  windNoiseSuppression: Type.Boolean(),
+  windNoiseDetected: Type.Boolean(),
+  noiseCancelingAdaptiveSensitivityLevel: Type.Number({
+    minimum: 0,
+    maximum: 10,
+  }),
+  multiSceneNoiseCanceling: Type.Union([
+    Type.Literal("transport"),
+    Type.Literal("outdoor"),
+    Type.Literal("indoor"),
+  ]),
+});
+export type SoundModesTypeThree = Static<typeof soundModesTypeThreeSchema>;
+
 const ambientSoundModeCycleSchema = Type.Object({
   noiseCancelingMode: Type.Boolean(),
   transparencyMode: Type.Boolean(),
@@ -164,6 +191,10 @@ const deviceFeaturesSchema = Type.Object({
   hasAutoPowerOff: Type.Boolean(),
   hasAmbientSoundModeCycle: Type.Boolean(),
   dynamicRangeCompressionMinFirmwareVersion: Nullable(firmwareVersionSchema),
+  hasGamingMode: Type.Boolean(),
+  hasSurroundSound: Type.Boolean(),
+  hasDualConnections: Type.Boolean(),
+  hasLowBatteryPrompt: Type.Boolean(),
 });
 export type DeviceFeatures = Static<typeof deviceFeaturesSchema>;
 
@@ -220,6 +251,11 @@ const deviceStateSchema = Type.Object({
   buttonConfiguration: Nullable(multiButtonConfigurationSchema),
   serialNumber: Nullable(Type.String()),
   ambientSoundModeCycle: Nullable(ambientSoundModeCycleSchema),
+  soundModesTypeThree: Nullable(soundModesTypeThreeSchema),
+  gamingMode: Nullable(Type.Boolean()),
+  surroundSound: Nullable(Type.Boolean()),
+  dualConnections: Nullable(Type.Boolean()),
+  lowBatteryPrompt: Nullable(Type.Boolean()),
 });
 export type DeviceState = Static<typeof deviceStateSchema>;
 export const DeviceStateValidator = TypeCompiler.Compile(deviceStateSchema);

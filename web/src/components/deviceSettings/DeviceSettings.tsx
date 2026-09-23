@@ -12,8 +12,11 @@ import {
   PresetEqualizerProfile,
   SoundModes,
   SoundModesTypeTwo,
+  SoundModesTypeThree,
 } from "../../libTypes/DeviceState";
 import { SoundModeSelection as SoundModeTypeTwoSelection } from "../soundModeTypeTwo/SoundModeSelection";
+import { SoundModeSelection as SoundModeTypeThreeSelection } from "../soundModeTypeThree/SoundModeSelection";
+import { AdditionalSettings } from "../additionalSettings/AdditionalSettings";
 import { ButtonSettings } from "../buttonSettings/ButtonSettings";
 import { DeviceInfo } from "../deviceInfo/DeviceInfo";
 import { EqualizerSettings } from "../equalizer/EqualizerSettings";
@@ -53,6 +56,8 @@ export function DeviceSettings({
         // Regular function call so we can filter out nulls
         SoundModeSelectionSection({ displayState, setDisplayState }),
         SoundModeTypeTwoSelectionSection({ displayState, setDisplayState }),
+        SoundModeTypeThreeSelectionSection({ displayState, setDisplayState }),
+        AdditionalSettingsSection({ device, displayState }),
         EqualizerSection({ displayState, setDisplayState }),
         ButtonSettingsSection({ displayState, setDisplayState }),
 
@@ -125,6 +130,50 @@ function SoundModeTypeTwoSelectionSection({
       />
     );
   }
+}
+
+function SoundModeTypeThreeSelectionSection({
+  displayState,
+  setDisplayState,
+}: {
+  displayState: DeviceState;
+  setDisplayState: Dispatch<SetStateAction<DeviceState>>;
+}) {
+  const setSoundModes = useCallback(
+    (soundModes: SoundModesTypeThree) => {
+      setDisplayState((state) => ({
+        ...state,
+        soundModesTypeThree: soundModes,
+      }));
+    },
+    [setDisplayState],
+  );
+
+  if (displayState.soundModesTypeThree) {
+    return (
+      <SoundModeTypeThreeSelection
+        soundModes={displayState.soundModesTypeThree}
+        setSoundModes={setSoundModes}
+      />
+    );
+  }
+}
+
+function AdditionalSettingsSection({
+  device,
+  displayState,
+}: {
+  device: Device;
+  displayState: DeviceState;
+}) {
+  if (
+    !displayState.deviceFeatures.hasGamingMode &&
+    !displayState.deviceFeatures.hasSurroundSound &&
+    !displayState.deviceFeatures.hasLowBatteryPrompt
+  ) {
+    return undefined;
+  }
+  return <AdditionalSettings device={device} deviceState={displayState} />;
 }
 
 function EqualizerSection({

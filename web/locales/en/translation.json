@@ -150,5 +150,24 @@
     "spokenWord": "Spoken Word",
     "trebleBooster": "Treble Booster",
     "trebleReducer": "Treble Reducer"
+  },
+  "soundModeTypeThree": {
+    "manual": "Manual",
+    "adaptive": "Adaptive",
+    "multiScene": "Multi-Scene",
+    "multiSceneNoiseCanceling": "Multi-Scene Noise Canceling",
+    "multiSceneOptions": {
+      "transport": "Transport",
+      "outdoor": "Outdoor",
+      "indoor": "Indoor"
+    },
+    "adaptiveSensitivity": "Adaptive Noise Canceling Sensitivity",
+    "windNoiseSuppression": "Wind Noise Suppression"
+  },
+  "additionalSettings": {
+    "additionalSettings": "Additional Settings",
+    "gamingMode": "Gaming Mode",
+    "surroundSound": "Surround Sound",
+    "lowBatteryPrompt": "Low Battery Prompt"
   }
 }

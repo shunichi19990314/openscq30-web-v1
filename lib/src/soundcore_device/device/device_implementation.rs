@@ -39,6 +39,36 @@ pub trait DeviceImplementation {
         })
     }
 
+    fn set_gaming_mode(
+        &self,
+        _state: DeviceState,
+        _enabled: bool,
+    ) -> crate::Result<CommandResponse> {
+        Err(crate::Error::FeatureNotSupported {
+            feature_name: "gaming mode",
+        })
+    }
+
+    fn set_surround_sound(
+        &self,
+        _state: DeviceState,
+        _enabled: bool,
+    ) -> crate::Result<CommandResponse> {
+        Err(crate::Error::FeatureNotSupported {
+            feature_name: "surround sound",
+        })
+    }
+
+    fn set_low_battery_prompt(
+        &self,
+        _state: DeviceState,
+        _enabled: bool,
+    ) -> crate::Result<CommandResponse> {
+        Err(crate::Error::FeatureNotSupported {
+            feature_name: "low battery prompt",
+        })
+    }
+
     fn set_ambient_sound_mode_cycle(
         &self,
         state: DeviceState,
