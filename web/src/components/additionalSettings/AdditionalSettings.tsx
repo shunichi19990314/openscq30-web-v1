@@ -1,3 +1,4 @@
+import { Tune } from "@mui/icons-material";
 import { FormControlLabel, Stack, Switch, Typography } from "@mui/material";
 import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -48,7 +49,8 @@ export const AdditionalSettings = React.memo(function ({
     firmware != null && (firmware.major > 1 || firmware.minor >= 60);
   return (
     <Stack spacing="1">
-      <Typography component="h2" variant="h6">
+      <Typography component="h2" variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1, marginBottom: 1 }}>
+        <Tune color="primary" />
         {t("additionalSettings.additionalSettings")}
       </Typography>
       {features.hasGamingMode && gamingModeSupported && deviceState.gamingMode != null && (
@@ -59,7 +61,12 @@ export const AdditionalSettings = React.memo(function ({
               onChange={(event) => setGamingMode(event.target.checked)}
             />
           }
-          label={t("additionalSettings.gamingMode")}
+          label={
+            <Stack spacing={0.25}>
+              <Typography>{t("additionalSettings.gamingMode")}</Typography>
+              <Typography variant="caption" color="text.secondary">{t("additionalSettings.gamingModeDescription")}</Typography>
+            </Stack>
+          }
         />
       )}
       {features.hasSurroundSound && deviceState.surroundSound != null && (
@@ -70,7 +77,12 @@ export const AdditionalSettings = React.memo(function ({
               onChange={(event) => setSurroundSound(event.target.checked)}
             />
           }
-          label={t("additionalSettings.surroundSound")}
+          label={
+            <Stack spacing={0.25}>
+              <Typography>{t("additionalSettings.surroundSound")}</Typography>
+              <Typography variant="caption" color="text.secondary">{t("additionalSettings.surroundSoundDescription")}</Typography>
+            </Stack>
+          }
         />
       )}
       {features.hasLowBatteryPrompt && deviceState.lowBatteryPrompt != null && (
@@ -81,7 +93,12 @@ export const AdditionalSettings = React.memo(function ({
               onChange={(event) => setLowBatteryPrompt(event.target.checked)}
             />
           }
-          label={t("additionalSettings.lowBatteryPrompt")}
+          label={
+            <Stack spacing={0.25}>
+              <Typography>{t("additionalSettings.lowBatteryPrompt")}</Typography>
+              <Typography variant="caption" color="text.secondary">{t("additionalSettings.lowBatteryPromptDescription")}</Typography>
+            </Stack>
+          }
         />
       )}
     </Stack>

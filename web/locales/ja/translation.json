@@ -168,6 +168,14 @@
     "additionalSettings": "その他の設定",
     "gamingMode": "ゲーミングモード",
     "surroundSound": "サラウンドサウンド",
-    "lowBatteryPrompt": "バッテリー低下通知"
+    "lowBatteryPrompt": "バッテリー低下通知",
+    "gamingModeDescription": "ゲーム向けの低遅延モードです",
+    "surroundSoundDescription": "音の広がりを強調します",
+    "lowBatteryPromptDescription": "バッテリー減少時に音で知らせます"
+  },
+  "home": {
+    "title": "OpenSCQ30 Web",
+    "description": "Soundcoreのイヤホン・ヘッドホンをブラウザから操作するアプリです（Web Bluetooth対応）。",
+    "howto": "右上の「デバイスを選択」からイヤホンと接続してください。"
   }
 }

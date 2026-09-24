@@ -1,5 +1,5 @@
 import { Masonry } from "@mui/lab";
-import { Box } from "@mui/material";
+import { Paper } from "@mui/material";
 import { Dispatch, SetStateAction, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EqualizerHelper } from "../../../wasm/pkg/openscq30_web_wasm";
@@ -66,9 +66,20 @@ export function DeviceSettings({
       ]
         .filter((component) => component)
         .map((component, index) => (
-          <Box padding={2} marginBottom={2} border="1px solid grey" key={index}>
+          <Paper
+            elevation={0}
+            key={index}
+            sx={{
+              padding: { xs: 2, sm: 3 },
+              marginBottom: 3,
+              borderRadius: 6,
+              border: "1px solid",
+              borderColor: "divider",
+              boxShadow: "0 2px 12px rgb(0 0 0 / 0.06)",
+            }}
+          >
             {component}
-          </Box>
+          </Paper>
         ))}
     </Masonry>
   );

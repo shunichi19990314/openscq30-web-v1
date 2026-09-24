@@ -1,3 +1,4 @@
+import { InfoOutlined } from "@mui/icons-material";
 import {
   Stack,
   Table,
@@ -18,7 +19,8 @@ export const DeviceInfo = React.memo(function ({ deviceState }: Props) {
   const { t } = useTranslation();
   return (
     <Stack spacing={2}>
-      <Typography component="h2" variant="h6">
+      <Typography component="h2" variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1, marginBottom: 1 }}>
+        <InfoOutlined color="primary" />
         {t("deviceInfo.deviceInfo")}
       </Typography>
       {/* The entirety of DeviceInfo has a border, so it looks weird if the last row has a trailing bottom border */}

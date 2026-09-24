@@ -1,3 +1,4 @@
+import { GraphicEq } from "@mui/icons-material";
 import { Add, Delete } from "@mui/icons-material";
 import { IconButton, Stack, SxProps, Typography } from "@mui/material";
 import { isEqual } from "lodash-es";
@@ -52,7 +53,8 @@ export const EqualizerSettings = React.memo(function (props: Props) {
 
   return (
     <Stack spacing={2}>
-      <Typography component="h2" variant="h6">
+      <Typography component="h2" variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1, marginBottom: 1 }}>
+        <GraphicEq color="primary" />
         {t("equalizer.equalizer")}
       </Typography>
       <PresetProfiles

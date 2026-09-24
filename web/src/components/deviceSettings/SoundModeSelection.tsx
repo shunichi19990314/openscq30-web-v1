@@ -1,3 +1,4 @@
+import { Hearing } from "@mui/icons-material";
 import { Stack, Typography } from "@mui/material";
 import React, { useCallback } from "react";
 import { AmbientSoundModeSelection } from "../soundMode/AmbientSoundModeSelection";
@@ -58,7 +59,8 @@ export const SoundModeSelection = React.memo(function ({
 
   return (
     <Stack spacing="2">
-      <Typography component="h2" variant="h6">
+      <Typography component="h2" variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1, marginBottom: 1 }}>
+        <Hearing color="primary" />
         {t("soundModes.soundModes")}
       </Typography>
       <AmbientSoundModeSelection

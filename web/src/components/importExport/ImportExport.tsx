@@ -1,3 +1,4 @@
+import { SyncAlt } from "@mui/icons-material";
 import { Button, Stack, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -39,7 +40,8 @@ export const ImportExport = React.memo(function () {
 
   return (
     <Stack spacing={2}>
-      <Typography component="h2" variant="h6">
+      <Typography component="h2" variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1, marginBottom: 1 }}>
+        <SyncAlt color="primary" />
         {t("application.importExport")}
       </Typography>
 

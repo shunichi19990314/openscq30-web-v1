@@ -1,3 +1,4 @@
+import { TouchApp } from "@mui/icons-material";
 import {
   FormControl,
   InputLabel,
@@ -36,7 +37,8 @@ export const ButtonSettings = React.memo(function ({
 
   return (
     <Stack spacing={2}>
-      <Typography component="h2" variant="h6">
+      <Typography component="h2" variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1, marginBottom: 1 }}>
+        <TouchApp color="primary" />
         {t("buttons.Buttons")}
       </Typography>
       {buttons.map(({ key, label }) => {

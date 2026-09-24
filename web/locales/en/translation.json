@@ -168,6 +168,14 @@
     "additionalSettings": "Additional Settings",
     "gamingMode": "Gaming Mode",
     "surroundSound": "Surround Sound",
-    "lowBatteryPrompt": "Low Battery Prompt"
+    "lowBatteryPrompt": "Low Battery Prompt",
+    "gamingModeDescription": "Reduces audio latency for games",
+    "surroundSoundDescription": "Widens the sound stage",
+    "lowBatteryPromptDescription": "Plays a tone when the battery is low"
+  },
+  "home": {
+    "title": "OpenSCQ30 Web",
+    "description": "A browser app for controlling Soundcore headphones and earbuds over Web Bluetooth.",
+    "howto": "Press “Select Device” in the top right to connect your headphones."
   }
 }
