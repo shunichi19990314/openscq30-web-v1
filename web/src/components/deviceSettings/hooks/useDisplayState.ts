@@ -5,6 +5,7 @@ import { useBehaviorSubject } from "../../../hooks/useObservable";
 import {
   DeviceState,
   EqualizerConfiguration,
+  SoundModesTypeThree,
 } from "../../../libTypes/DeviceState";
 
 /**
@@ -72,15 +73,22 @@ function useUpdateActualFromDisplay(
     debouncedSetActualEqualizerConfiguration,
   ]);
 
+  // Debounce so slider drags (manual/adaptive levels) don't flood the headphones
+  const debouncedSetSoundModesTypeThree = useMemo(
+    () =>
+      debounce((soundModes: SoundModesTypeThree) => {
+        device.setSoundModesTypeThree(soundModes).catch(onBluetoothError);
+      }, 400),
+    [device, onBluetoothError],
+  );
+
   // Update ambient sound mode and noise canceling mode instantly
   useEffect(() => {
     if (displayState.soundModes) {
       device.setSoundModes(displayState.soundModes).catch(onBluetoothError);
     }
     if (displayState.soundModesTypeThree) {
-      device
-        .setSoundModesTypeThree(displayState.soundModesTypeThree)
-        .catch(onBluetoothError);
+      debouncedSetSoundModesTypeThree(displayState.soundModesTypeThree);
     }
     if (displayState.buttonConfiguration) {
       device
@@ -92,6 +100,7 @@ function useUpdateActualFromDisplay(
     displayState.soundModes,
     displayState.soundModesTypeThree,
     displayState.buttonConfiguration,
+    debouncedSetSoundModesTypeThree,
     onBluetoothError,
   ]);
 }

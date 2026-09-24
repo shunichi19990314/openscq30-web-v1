@@ -41,12 +41,17 @@ export const AdditionalSettings = React.memo(function ({
   );
 
   const features = deviceState.deviceFeatures;
+  // v2 only exposes gaming mode on firmware >= 01.60; older firmwares ignore or
+  // misinterpret the flag, so hide the toggle there
+  const firmware = deviceState.firmwareVersion;
+  const gamingModeSupported =
+    firmware != null && (firmware.major > 1 || firmware.minor >= 60);
   return (
     <Stack spacing="1">
       <Typography component="h2" variant="h6">
         {t("additionalSettings.additionalSettings")}
       </Typography>
-      {features.hasGamingMode && deviceState.gamingMode != null && (
+      {features.hasGamingMode && gamingModeSupported && deviceState.gamingMode != null && (
         <FormControlLabel
           control={
             <Switch

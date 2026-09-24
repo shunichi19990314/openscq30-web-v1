@@ -465,6 +465,32 @@ mod tests {
     }
 
     #[test]
+    fn no_other_model_parser_accepts_the_a3959_packet() {
+        // safety: a misparse by another model's parser would apply the wrong device
+        // profile and could send incorrect setting packets to the headphones
+        use crate::devices::{
+            a3027::packets::A3027StateUpdatePacket, a3028::packets::A3028StateUpdatePacket,
+            a3031::packets::A3031StateUpdatePacket, a3033::packets::A3033StateUpdatePacket,
+            a3926::packets::A3926StateUpdatePacket, a3930::packets::A3930StateUpdatePacket,
+            a3931::packets::A3931StateUpdatePacket,
+            a3933::packets::inbound::A3933StateUpdatePacket,
+            a3936::packets::A3936StateUpdatePacket, a3945::packets::A3945StateUpdatePacket,
+            a3951::packets::A3951StateUpdatePacket,
+        };
+        assert!(A3027StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3028StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3031StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3033StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3926StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3930StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3931StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3933StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3936StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3945StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+        assert!(A3951StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE).is_err());
+    }
+
+    #[test]
     fn it_maps_battery_to_percentage() {
         assert_eq!(to_percentage(0), 0);
         assert_eq!(to_percentage(5), 50);
