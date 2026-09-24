@@ -11,7 +11,7 @@ traitメソッドは `FeatureNotSupported` でパケット生成前に終了）�
 |---|---|---|---|
 | 状態要求 | `08 ee 00 00 00 01 01` + `0a 00 02` | `RequestState` = `[01 01]` | ✅（実機応答済み） |
 | サウンドモード(type3) | `… 06 81` + 7B | `[06 81]` + 7B（a3959テストベクタ一致） | ✅ |
-| EQ+DRC | `… 02 83` + 22B (prof2+bands10+drc10) | `[02 83]` + 22B | ✅ |
+| EQ+DRC | `… 02 83` + 22B (prof2+bands10+**apply_drc計算値10**) | `[02 83]` + 22B（v2 `set_equalizer_with_drc` = apply_drc連鎖） | ✅ |
 | ボタン動作（単位送信） | `… 04 81` + 3B | `[04 81]` + 3B | ✅ |
 | アンビエントサイクル | `… 06 82` + 1B | `SetAmbientSoundModeCycle [06 82]` + 1B | ✅ |
 | ゲーミングモード | `… 01 87` + 1B | `SET_GAMING_MODE_COMMAND [01 87]` | ✅ |

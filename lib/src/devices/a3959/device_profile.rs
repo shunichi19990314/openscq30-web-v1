@@ -85,6 +85,34 @@ mod tests {
     }
 
     #[test]
+    fn it_sends_a_computed_drc_curve_when_setting_the_equalizer() {
+        let implementation = A3959Implementation::default();
+        let state = implementation
+            .initialize(REAL_DEVICE_STATE_UPDATE)
+            .expect("should initialize");
+        let adjustments = vec![-3.0, 0.0, 2.0, 4.0, 4.0, 2.0, 0.0, -2.0, 0.0, 0.0];
+        let equalizer_configuration = EqualizerConfiguration::new_custom_profile(
+            crate::devices::standard::structures::VolumeAdjustments::new(adjustments)
+                .expect("10 bands"),
+        );
+        let expected_drc: Vec<u8> = equalizer_configuration
+            .volume_adjustments()
+            .apply_drc()
+            .bytes()
+            .collect();
+        let response = implementation
+            .set_equalizer_configuration(state, equalizer_configuration)
+            .expect("should set");
+        assert_eq!(response.packets.len(), 1);
+        let bytes = response.packets[0].bytes();
+        // body starts after 7 command bytes + len + 0x00
+        let body = &bytes[9..31];
+        let drc_section = &body[12..22];
+        assert_eq!(drc_section, expected_drc.as_slice());
+        assert_ne!(drc_section, &[0u8; 10]);
+    }
+
+    #[test]
     fn it_disables_a_button_with_0xff() {
         let implementation = A3959Implementation::default();
         let state = implementation
@@ -135,9 +163,6 @@ pub(crate) const A3959_DEVICE_PROFILE: DeviceProfile = DeviceProfile {
 
 #[derive(Default)]
 pub(crate) struct A3959Implementation {
-    /// dynamic range compression bytes received from the device, resent verbatim when the
-    /// equalizer is set (the meaning of the block is not fully understood yet)
-    drc: Arc<Mutex<[u8; 10]>>,
     /// raw button action bytes (8 slots), used to preserve the disconnected-state nibble
     /// and the triple press slots when setting one of the six UI-editable slots
     buttons_raw: Arc<Mutex<[u8; 8]>>,
@@ -150,7 +175,6 @@ impl DeviceImplementation for A3959Implementation {
         Command,
         Box<dyn Fn(&[u8], DeviceState) -> DeviceState + Send + Sync>,
     > {
-        let drc = self.drc.to_owned();
         let buttons_raw = self.buttons_raw.to_owned();
         let mut handlers = standard::implementation::packet_handlers();
 
@@ -164,7 +188,6 @@ impl DeviceImplementation for A3959Implementation {
                         return state;
                     }
                 };
-                *drc.lock().expect("drc mutex poisoned") = packet.drc_preserved;
                 *buttons_raw.lock().expect("buttons mutex poisoned") = packet.buttons_raw;
                 StateUpdatePacket::from(packet).into()
             }),
@@ -179,7 +202,6 @@ impl DeviceImplementation for A3959Implementation {
             .map_err(|err| crate::Error::ParseError {
                 message: format!("{err:?}"),
             })?;
-        *self.drc.lock().expect("drc mutex poisoned") = packet.drc_preserved;
         *self.buttons_raw.lock().expect("buttons mutex poisoned") = packet.buttons_raw;
         Ok(StateUpdatePacket::from(packet).into())
     }
@@ -271,10 +293,20 @@ impl DeviceImplementation for A3959Implementation {
                 new_state: state,
             });
         }
-        let preserved_drc = *self.drc.lock().expect("drc mutex poisoned");
+        // the firmware expects a computed DRC curve in the set packet (the all-zero
+        // block reported in state updates is invalid as a set payload and made the
+        // device drop the connection); v1/v2 share the same DRC algorithm
+        let drc_bytes: Vec<u8> = equalizer_configuration
+            .volume_adjustments()
+            .apply_drc()
+            .bytes()
+            .collect();
+        let drc: [u8; 10] = drc_bytes
+            .try_into()
+            .expect("apply_drc preserves the number of bands");
         let packet = SetEqualizerMonoPreservedDrcPacket {
             configuration: &equalizer_configuration,
-            preserved_drc: &preserved_drc,
+            preserved_drc: &drc,
         };
         Ok(CommandResponse {
             packets: vec![packet.into()],
