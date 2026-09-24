@@ -41,6 +41,12 @@
 <button id="btnRequest" disabled>状態要求を送信</button>
 <pre>08 ee 00 00 00 01 01 0a 00 02</pre>
 
+<h2>5. 生コマンド送信（ボタン動作バイト実験用）</h2>
+<p class="note">コマンド2バイトとbody(hex)を送れます（ヘッダ・長さ・チェックサムは自動付与）。例: 左シングル=byte XX にするには cmd=<code>04 81</code> body=<code>00 02 XX</code>。送信後イヤホンを実際にタップして反応を確認してください。</p>
+<button id="btnRaw">生コマンド送信</button>
+<label>cmd: <input id="rawCmd" size="6" value="04 81"></label>
+<label>body: <input id="rawBody" size="24" value="00 02 00"></label>
+
 <h2>受信ログ</h2>
 <div class="log" id="log">(まだ何もありません)</div>
 <button id="btnCopy">ログをコピー</button>
@@ -175,6 +181,26 @@ document.getElementById("btnRequest").onclick = async () => {
     log("state request written: " + hex(STATE_REQUEST));
   } catch (e) {
     log("ERROR write: " + (e && e.message ? e.message : e));
+  }
+};
+
+function parseHex(str) {
+  return str.trim().split(/[,\s]+/).filter(x => x).map(x => parseInt(x, 16));
+}
+document.getElementById("btnRaw").onclick = async () => {
+  try {
+    if (!writeChar) { log("ERROR: writeChar がありません（先にサービス列挙）"); return; }
+    const cmd = parseHex(document.getElementById("rawCmd").value);
+    const body = parseHex(document.getElementById("rawBody").value);
+    const header = [0x08, 0xee, 0x00, 0x00, 0x00, cmd[0], cmd[1]];
+    const length = header.length + 2 + body.length + 1;
+    const packet = [...header, length & 0xff, (length >> 8) & 0xff, ...body];
+    const checksum = packet.reduce((a, b) => (a + b) & 0xff, 0);
+    packet.push(checksum);
+    await writeChar.writeValueWithResponse(new Uint8Array(packet));
+    log("raw written: " + hex(packet));
+  } catch (e) {
+    log("ERROR raw: " + (e && e.message ? e.message : e));
   }
 };
 
