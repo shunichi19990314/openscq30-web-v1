@@ -54,6 +54,16 @@ impl EqualizerConfiguration {
         }
     }
 
+    pub(crate) fn new_from_preset_profile_with_adjustments(
+        preset_profile: PresetEqualizerProfile,
+        volume_adjustments: VolumeAdjustments,
+    ) -> Self {
+        Self {
+            preset_profile: Some(preset_profile),
+            volume_adjustments,
+        }
+    }
+
     pub fn new_custom_profile(volume_adjustments: VolumeAdjustments) -> Self {
         Self {
             preset_profile: None,

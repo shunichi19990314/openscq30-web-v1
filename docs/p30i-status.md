@@ -26,7 +26,10 @@
 
 ## 未解決（実機/コンソール待ち）
 
-- **接続数秒後の "Device is disconnected."**
+- ~~接続数秒後の "Device is disconnected."~~ → **根因特定・修正済み**（2026-09-24）:
+  - 根因: api層 `set_equalizer_configuration` のバンド数チェック（state bands == features.num_equalizer_bands）に対し、A3959は features=10バンドなのにプリセットseedの状態が8バンド → 接続500ms後のUI自動EQ同期が必ず Err → トースト＋ picker 戻り
+  - 修正: a3959パーサでEQを常に10バンド化（プリセット有効かつバンド=0xff のときプリセットカーブ8値+0dB×2でseed）
+  - 再発防止: 実機ベクタテストに「preset Some かつ bands len == 10」アサーション追加
   - 監査済み棄却説: 誤parse（全パーサall_consuming）/ JS検証例外のwasm伝播（try/catch済み）/ inbound handler panic（unwrapはtestのみ）/ 自動書き込み（EQガード後はゼロ）
   - 残り候補: ①デバイス又はOS発のGATT切断（ChromeOSペアリングとの取り合い等）②接続直後のstate request応答タイムアウト（再現間欠性）③その他GATTエラー
   - **決定打=Consoleのconsole.error出力**（User側で後日取得予定）

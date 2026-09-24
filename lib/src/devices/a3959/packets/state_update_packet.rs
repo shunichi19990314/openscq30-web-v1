@@ -2,7 +2,7 @@ use nom::{
     bytes::complete::take,
     combinator::all_consuming,
     error::{context, ContextError, ParseError},
-    number::complete::le_u8,
+    number::complete::{le_u8, le_u16},
     sequence::tuple,
     IResult,
 };
@@ -17,7 +17,8 @@ use crate::devices::{
         structures::{
             AmbientSoundModeCycle, BatteryLevel, ButtonAction, ButtonConfiguration, DualBattery,
             EqualizerConfiguration, FirmwareVersion, IsBatteryCharging, MultiButtonConfiguration,
-            SerialNumber, SingleBattery, SoundModesTypeThree, TwsStatus,
+            PresetEqualizerProfile, SerialNumber, SingleBattery, SoundModesTypeThree, TwsStatus,
+            VolumeAdjustments,
         },
     },
 };
@@ -126,6 +127,36 @@ impl A3959StateUpdatePacket {
     }
 }
 
+/// Parses the A3959 equalizer block (profile id + 10 bands). While a preset profile is
+/// active the device reports 0xff for every band; in that case the 10-band equalizer is
+/// seeded from the preset curve plus two flat bands so that the state always carries
+/// `features.num_equalizer_bands` values (the api layer rejects sets with a band count
+/// mismatch, which used to break the initial equalizer synchronization).
+fn take_equalizer_configuration_10band<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+    input: &'a [u8],
+) -> IResult<&'a [u8], EqualizerConfiguration, E> {
+    let (input, profile_id) = le_u16(input)?;
+    let (input, bands) = take(10usize)(input)?;
+    let bands: Vec<u8> = bands.to_vec();
+    let adjustments = VolumeAdjustments::new(bands.iter().map(|b| (*b as f64 - 120.0) / 10.0))
+        .expect("10 bands is a valid number of bands");
+    let eq = match PresetEqualizerProfile::from_id(profile_id) {
+        Some(preset) if bands.iter().all(|b| *b == 0xff) => {
+            let mut seeded: Vec<f64> = preset.volume_adjustments().adjustments().to_vec();
+            seeded.resize(10, 0.0);
+            EqualizerConfiguration::new_from_preset_profile_with_adjustments(
+                preset,
+                VolumeAdjustments::new(seeded).expect("10 bands is a valid number of bands"),
+            )
+        }
+        Some(preset) => EqualizerConfiguration::new_from_preset_profile_with_adjustments(
+            preset, adjustments,
+        ),
+        None => EqualizerConfiguration::new_custom_profile(adjustments),
+    };
+    Ok((input, eq))
+}
+
 impl From<A3959StateUpdatePacket> for StateUpdatePacket {
     fn from(packet: A3959StateUpdatePacket) -> Self {
         let button_configuration = packet.button_configuration();
@@ -182,7 +213,7 @@ impl InboundPacket for A3959StateUpdatePacket {
                         FirmwareVersion::take,
                         FirmwareVersion::take,
                         SerialNumber::take,
-                        EqualizerConfiguration::take(10),
+                        take_equalizer_configuration_10band,
                         take(10usize),
                         le_u8,
                         take(8usize),
@@ -360,6 +391,15 @@ mod tests {
         assert_eq!(packet.firmware_version_left, FirmwareVersion::new(1, 44));
         assert_eq!(packet.serial_number.as_str(), "39599C2C3139C1A4");
         assert_eq!(packet.preserve_byte, 0x0a);
+        // preset active -> seeded 10 bands so the api layer band count check passes
+        assert_eq!(
+            packet.equalizer_configuration.preset_profile(),
+            Some(PresetEqualizerProfile::SoundcoreSignature)
+        );
+        assert_eq!(
+            packet.equalizer_configuration.volume_adjustments().adjustments().len(),
+            10
+        );
         assert_eq!(packet.buttons_raw, [0xff, 0xff, 0x63, 0x66, 0xff, 0xff, 0x44, 0x44]);
 
         assert_eq!(
