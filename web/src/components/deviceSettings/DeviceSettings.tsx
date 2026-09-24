@@ -40,6 +40,11 @@ export function DeviceSettings({
   const onBluetoothError = useCallback(
     (err: Error) => {
       errorHandler(err);
+      // a rejected feature (e.g. band count mismatch) is not a connection loss;
+      // dropping the session for it would look like the headphones disconnected
+      if (String(err).includes("FeatureNotSupported")) {
+        return;
+      }
       disconnect();
     },
     [errorHandler, disconnect],
@@ -196,20 +201,26 @@ function EqualizerSection({
 }) {
   const setSelectedPresetProfile = useCallback(
     (presetProfile: PresetEqualizerProfile | "custom") => {
+      // preset curves are stored with 8 bands; devices with more bands (A3959 has 10)
+      // need the curve padded, otherwise the band count check rejects the update
+      const adjustments =
+        presetProfile != "custom"
+          ? [...EqualizerHelper.getPresetProfileVolumeAdjustments(presetProfile)]
+          : displayState.equalizerConfiguration.volumeAdjustments;
+      const targetBands = displayState.deviceFeatures.numEqualizerBands;
+      while (adjustments.length < targetBands) {
+        adjustments.push(0);
+      }
+      adjustments.length = Math.min(adjustments.length, targetBands);
       const newEqualizerConfiguration: EqualizerConfiguration =
         presetProfile != "custom"
           ? {
               presetProfile,
-              volumeAdjustments: [
-                ...EqualizerHelper.getPresetProfileVolumeAdjustments(
-                  presetProfile,
-                ),
-              ],
+              volumeAdjustments: adjustments,
             }
           : {
               presetProfile: null,
-              volumeAdjustments:
-                displayState.equalizerConfiguration.volumeAdjustments,
+              volumeAdjustments: adjustments,
             };
       setDisplayState((state) => ({
         ...state,

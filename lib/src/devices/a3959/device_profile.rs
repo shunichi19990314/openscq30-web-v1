@@ -75,7 +75,7 @@ mod tests {
             .expect("should set");
         assert_eq!(response.packets.len(), 1);
         let bytes = SetButtonActionPacket {
-            order_index: 2,
+            side: 0,
             button_id: 0,
             // disconnected nibble 6 preserved, connected nibble becomes 6 (PlayPause)
             action_byte: 0x66,
@@ -128,7 +128,7 @@ mod tests {
             .expect("should set");
         assert_eq!(response.packets.len(), 1);
         let bytes = SetButtonActionPacket {
-            order_index: 6,
+            side: 0,
             button_id: 1,
             action_byte: 0xFF,
         }
@@ -332,20 +332,23 @@ impl DeviceImplementation for A3959Implementation {
         state: DeviceState,
         button_configuration: MultiButtonConfiguration,
     ) -> crate::Result<CommandResponse> {
-        // (order index, button id, slot accessor) for the six UI-editable slots
-        let slots: [(u8, u8, fn(&MultiButtonConfiguration) -> ButtonConfiguration); 6] = [
-            (0, 2, |c| c.left_single_click),
-            (1, 2, |c| c.right_single_click),
-            (2, 0, |c| c.left_double_click),
-            (3, 0, |c| c.right_double_click),
-            (6, 1, |c| c.left_long_press),
-            (7, 1, |c| c.right_long_press),
+        // (side, button id, slot accessor) for the six UI-editable slots; the set packet
+        // body is `[side, button_id, action]` (0 = left, 1 = right; button ids:
+        // single = 2, double = 0, triple = 5, long = 1), matching the v2
+        // `SetButtonConfiguration` packet
+        let slots: [(u8, u8, usize, fn(&MultiButtonConfiguration) -> ButtonConfiguration); 6] = [
+            (0, 2, 0, |c| c.left_single_click),
+            (1, 2, 1, |c| c.right_single_click),
+            (0, 0, 2, |c| c.left_double_click),
+            (1, 0, 3, |c| c.right_double_click),
+            (0, 1, 6, |c| c.left_long_press),
+            (1, 1, 7, |c| c.right_long_press),
         ];
         let mut raw = self.buttons_raw.lock().expect("buttons mutex poisoned");
         let mut packets = Vec::new();
-        for (order_index, button_id, get) in slots {
+        for (side, button_id, order_index, get) in slots {
             let wanted = get(&button_configuration);
-            let current_raw = raw[order_index as usize];
+            let current_raw = raw[order_index];
             let current = {
                 let connected = current_raw & 0xF;
                 ButtonConfiguration {
@@ -369,10 +372,10 @@ impl DeviceImplementation for A3959Implementation {
                 };
                 (disconnected << 4) | action_id
             };
-            raw[order_index as usize] = action_byte;
+            raw[order_index] = action_byte;
             packets.push(
                 SetButtonActionPacket {
-                    order_index,
+                    side,
                     button_id,
                     action_byte,
                 }

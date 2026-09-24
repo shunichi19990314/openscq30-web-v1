@@ -4,12 +4,12 @@ use crate::devices::standard::{
 };
 
 /// Sets a single button action of the A3959 (command `[0x04, 0x81]`, 3 byte body:
-/// `[order index, button id, action byte]`). The action byte packs two action ids:
+/// `[side, button id, action byte]`, side: 0 = left, 1 = right). The action byte packs two action ids:
 /// low nibble = action while TWS connected, high nibble = action while disconnected
 /// (15 = disabled), matching the v2 `ActionKind::TwsLowBits` encoding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SetButtonActionPacket {
-    pub order_index: u8,
+    pub side: u8,
     pub button_id: u8,
     pub action_byte: u8,
 }
@@ -20,7 +20,7 @@ impl OutboundPacket for SetButtonActionPacket {
     }
 
     fn body(&self) -> Vec<u8> {
-        vec![self.order_index, self.button_id, self.action_byte]
+        vec![self.side, self.button_id, self.action_byte]
     }
 }
 
