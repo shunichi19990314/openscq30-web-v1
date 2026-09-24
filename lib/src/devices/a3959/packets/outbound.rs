@@ -3,6 +3,27 @@ use crate::devices::standard::{
     structures::{Command, EqualizerConfiguration, SoundModesTypeThree},
 };
 
+/// Sets a single button action of the A3959 (command `[0x04, 0x81]`, 3 byte body:
+/// `[order index, button id, action byte]`). The action byte packs two action ids:
+/// low nibble = action while TWS connected, high nibble = action while disconnected
+/// (15 = disabled), matching the v2 `ActionKind::TwsLowBits` encoding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SetButtonActionPacket {
+    pub order_index: u8,
+    pub button_id: u8,
+    pub action_byte: u8,
+}
+
+impl OutboundPacket for SetButtonActionPacket {
+    fn command(&self) -> Command {
+        Command::new([0x08, 0xee, 0x00, 0x00, 0x00, 0x04, 0x81])
+    }
+
+    fn body(&self) -> Vec<u8> {
+        vec![self.order_index, self.button_id, self.action_byte]
+    }
+}
+
 /// Sets the sound modes of the A3959 (command `[0x06, 0x81]`, 7 byte body).
 /// Same command as type two devices, but with the type three body layout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

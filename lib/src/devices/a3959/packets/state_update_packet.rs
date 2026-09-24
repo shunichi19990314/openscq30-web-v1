@@ -15,9 +15,9 @@ use crate::devices::{
             parsing::take_bool,
         },
         structures::{
-            AmbientSoundModeCycle, BatteryLevel, DualBattery, EqualizerConfiguration,
-            FirmwareVersion, IsBatteryCharging, SerialNumber, SingleBattery, SoundModesTypeThree,
-            TwsStatus,
+            AmbientSoundModeCycle, BatteryLevel, ButtonAction, ButtonConfiguration, DualBattery,
+            EqualizerConfiguration, FirmwareVersion, IsBatteryCharging, MultiButtonConfiguration,
+            SerialNumber, SingleBattery, SoundModesTypeThree, TwsStatus,
         },
     },
 };
@@ -50,7 +50,23 @@ use crate::devices::{
 /// | 87   | 1    | low battery prompt |
 /// | 88   | 1    | gaming mode (firmware >= 01.60 only) |
 /// | 89-  | 12   | unknown |
+/// state update captured from a real Soundcore P30i (2026-09-23, firmware 01.44,
+/// ambient sound mode = transparency, noise canceling off)
+#[cfg(test)]
+pub(crate) const REAL_DEVICE_STATE_UPDATE: &[u8] = &[
+    0x00, 0x01, 0x09, 0x09, 0xff, 0xff, 0x30, 0x31, 0x2e, 0x34, 0x34, 0x30, 0x31, 0x2e, 0x34,
+    0x34, 0x33, 0x39, 0x35, 0x39, 0x39, 0x43, 0x32, 0x43, 0x33, 0x31, 0x33, 0x39, 0x43, 0x31,
+    0x41, 0x34, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0xff, 0xff, 0x63, 0x66, 0xff,
+    0xff, 0x44, 0x44, 0x33, 0x01, 0x55, 0x00, 0x00, 0x00, 0xff, 0x00, 0x36, 0x01, 0x01, 0x00,
+    0x01, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00,
+];
+
+
 #[derive(Debug, Clone, PartialEq)]
+
+
 pub struct A3959StateUpdatePacket {
     pub tws_status: TwsStatus,
     /// raw 0-10 battery scale
@@ -78,8 +94,41 @@ pub struct A3959StateUpdatePacket {
 fn to_percentage(raw: u8) -> u8 {
     (raw.saturating_mul(10)).min(100)
 }
+/// action id of one nibble; 15 means disabled
+fn nibble_to_action(nibble: u8) -> Option<ButtonAction> {
+    match nibble {
+        0xF => None,
+        other => Some(ButtonAction::from_repr(other).unwrap_or_default()),
+    }
+}
+
+impl A3959StateUpdatePacket {
+    /// Maps the six button slots supported by the v1 UI (single/double/long press per
+    /// side) out of the eight raw action bytes. The triple press slots are kept on the
+    /// device and never sent by us.
+    pub fn button_configuration(&self) -> MultiButtonConfiguration {
+        let slot = |index: usize| {
+            let byte = self.buttons_raw[index];
+            let connected = byte & 0xF;
+            ButtonConfiguration {
+                action: nibble_to_action(connected).unwrap_or_default(),
+                is_enabled: nibble_to_action(connected).is_some(),
+            }
+        };
+        MultiButtonConfiguration {
+            left_single_click: slot(0),
+            right_single_click: slot(1),
+            left_double_click: slot(2),
+            right_double_click: slot(3),
+            left_long_press: slot(6),
+            right_long_press: slot(7),
+        }
+    }
+}
+
 impl From<A3959StateUpdatePacket> for StateUpdatePacket {
     fn from(packet: A3959StateUpdatePacket) -> Self {
+        let button_configuration = packet.button_configuration();
         Self {
             device_profile: &A3959_DEVICE_PROFILE,
             tws_status: Some(packet.tws_status),
@@ -101,7 +150,7 @@ impl From<A3959StateUpdatePacket> for StateUpdatePacket {
             age_range: None,
             gender: None,
             hear_id: None,
-            button_configuration: None,
+            button_configuration: Some(button_configuration),
             firmware_version: Some(packet.firmware_version_left),
             serial_number: Some(packet.serial_number),
             ambient_sound_mode_cycle: Some(packet.ambient_sound_mode_cycle),
@@ -295,17 +344,7 @@ mod tests {
         assert!(!packet.gaming_mode);
     }
 
-    /// state update captured from a real Soundcore P30i (2026-09-23, firmware 01.44,
-    /// ambient sound mode = transparency, noise canceling off)
-    const REAL_DEVICE_STATE_UPDATE: &[u8] = &[
-        0x00, 0x01, 0x09, 0x09, 0xff, 0xff, 0x30, 0x31, 0x2e, 0x34, 0x34, 0x30, 0x31, 0x2e, 0x34,
-        0x34, 0x33, 0x39, 0x35, 0x39, 0x39, 0x43, 0x32, 0x43, 0x33, 0x31, 0x33, 0x39, 0x43, 0x31,
-        0x41, 0x34, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0xff, 0xff, 0x63, 0x66, 0xff,
-        0xff, 0x44, 0x44, 0x33, 0x01, 0x55, 0x00, 0x00, 0x00, 0xff, 0x00, 0x36, 0x01, 0x01, 0x00,
-        0x01, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00,
-    ];
+
 
     #[test]
     fn it_parses_a_real_device_state_update() {
@@ -350,6 +389,39 @@ mod tests {
             }
             Battery::SingleBattery(_) => panic!("expected dual battery"),
         }
+    }
+
+    #[test]
+    fn it_maps_the_raw_button_bytes_to_the_six_ui_slots() {
+        let (_, packet) =
+            A3959StateUpdatePacket::take::<VerboseError<_>>(REAL_DEVICE_STATE_UPDATE)
+                .expect("should parse");
+        let buttons = packet.button_configuration();
+        // ff ff 63 66 ff ff 44 44
+        assert!(!buttons.left_single_click.is_enabled);
+        assert!(!buttons.right_single_click.is_enabled);
+        assert_eq!(
+            buttons.left_double_click,
+            ButtonConfiguration {
+                action: ButtonAction::NextSong,
+                is_enabled: true
+            }
+        );
+        assert_eq!(
+            buttons.right_double_click,
+            ButtonConfiguration {
+                action: ButtonAction::PlayPause,
+                is_enabled: true
+            }
+        );
+        assert_eq!(
+            buttons.left_long_press,
+            ButtonConfiguration {
+                action: ButtonAction::AmbientSoundMode,
+                is_enabled: true
+            }
+        );
+        assert_eq!(buttons.right_long_press, buttons.left_long_press);
     }
 
     #[test]

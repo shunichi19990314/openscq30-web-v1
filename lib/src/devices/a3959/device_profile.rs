@@ -6,7 +6,7 @@ use crate::{
     device_profile::{DeviceFeatures, DeviceProfile},
     devices::{
         a3959::packets::{
-            A3959StateUpdatePacket, SetEqualizerMonoPreservedDrcPacket,
+            A3959StateUpdatePacket, SetButtonActionPacket, SetEqualizerMonoPreservedDrcPacket,
             SetSoundModeTypeThreePacket,
         },
         standard::{
@@ -14,9 +14,9 @@ use crate::{
             packets::inbound::{state_update_packet::StateUpdatePacket, InboundPacket},
             state::DeviceState,
             structures::{
-                AmbientSoundModeCycle, Command, EqualizerConfiguration, HearId,
-                MultiButtonConfiguration, SoundModes, SoundModesTypeTwo, SoundModesTypeThree,
-                STATE_UPDATE,
+                AmbientSoundModeCycle, ButtonAction, ButtonConfiguration, Command,
+                EqualizerConfiguration, HearId, MultiButtonConfiguration, SoundModes,
+                SoundModesTypeTwo, SoundModesTypeThree, STATE_UPDATE,
             },
             packets::outbound::SetFlagPacket,
         },
@@ -48,6 +48,67 @@ fn set_flag(
     })
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::devices::a3959::packets::REAL_DEVICE_STATE_UPDATE;
+    use crate::devices::standard::packets::outbound::OutboundPacketBytesExt;
+    use crate::devices::standard::structures::{ButtonAction, ButtonConfiguration};
+
+    use super::*;
+
+    #[test]
+    fn it_sends_per_button_packets_and_preserves_the_disconnected_nibble() {
+        let implementation = A3959Implementation::default();
+        let state = implementation
+            .initialize(REAL_DEVICE_STATE_UPDATE)
+            .expect("should initialize");
+
+        let mut wanted = state.button_configuration.clone().expect("buttons");
+        // left double press: 0x63 (connected=NextSong, disconnected=PlayPause) -> PlayPause
+        wanted.left_double_click = ButtonConfiguration {
+            action: ButtonAction::PlayPause,
+            is_enabled: true,
+        };
+        // unchanged slots must not produce packets
+        let response = implementation
+            .set_multi_button_configuration(state, wanted)
+            .expect("should set");
+        assert_eq!(response.packets.len(), 1);
+        let bytes = SetButtonActionPacket {
+            order_index: 2,
+            button_id: 0,
+            // disconnected nibble 6 preserved, connected nibble becomes 6 (PlayPause)
+            action_byte: 0x66,
+        }
+        .bytes();
+        assert_eq!(bytes, response.packets[0].bytes());
+    }
+
+    #[test]
+    fn it_disables_a_button_with_0xff() {
+        let implementation = A3959Implementation::default();
+        let state = implementation
+            .initialize(REAL_DEVICE_STATE_UPDATE)
+            .expect("should initialize");
+        let mut wanted = state.button_configuration.clone().expect("buttons");
+        wanted.left_long_press = ButtonConfiguration {
+            action: ButtonAction::AmbientSoundMode,
+            is_enabled: false,
+        };
+        let response = implementation
+            .set_multi_button_configuration(state, wanted)
+            .expect("should set");
+        assert_eq!(response.packets.len(), 1);
+        let bytes = SetButtonActionPacket {
+            order_index: 6,
+            button_id: 1,
+            action_byte: 0xFF,
+        }
+        .bytes();
+        assert_eq!(bytes, response.packets[0].bytes());
+    }
+}
+
 pub(crate) const A3959_DEVICE_PROFILE: DeviceProfile = DeviceProfile {
     features: DeviceFeatures {
         available_sound_modes: None,
@@ -55,9 +116,9 @@ pub(crate) const A3959_DEVICE_PROFILE: DeviceProfile = DeviceProfile {
         num_equalizer_channels: 1,
         num_equalizer_bands: 10,
         has_dynamic_range_compression: true,
-        // TODO(phase 2): button configuration needs a per-button set packet ([0x04, 0x81]) and
-        // triple press slots in the UI; the raw bytes are already parsed and preserved.
-        has_button_configuration: false,
+        // per-button set packets ([0x04, 0x81]); the v1 UI exposes the six
+        // single/double/long press slots, triple press stays on the device
+        has_button_configuration: true,
         has_wear_detection: false,
         has_touch_tone: false,
         has_auto_power_off: false,
@@ -77,6 +138,9 @@ pub(crate) struct A3959Implementation {
     /// dynamic range compression bytes received from the device, resent verbatim when the
     /// equalizer is set (the meaning of the block is not fully understood yet)
     drc: Arc<Mutex<[u8; 10]>>,
+    /// raw button action bytes (8 slots), used to preserve the disconnected-state nibble
+    /// and the triple press slots when setting one of the six UI-editable slots
+    buttons_raw: Arc<Mutex<[u8; 8]>>,
 }
 
 impl DeviceImplementation for A3959Implementation {
@@ -87,6 +151,7 @@ impl DeviceImplementation for A3959Implementation {
         Box<dyn Fn(&[u8], DeviceState) -> DeviceState + Send + Sync>,
     > {
         let drc = self.drc.to_owned();
+        let buttons_raw = self.buttons_raw.to_owned();
         let mut handlers = standard::implementation::packet_handlers();
 
         handlers.insert(
@@ -100,6 +165,7 @@ impl DeviceImplementation for A3959Implementation {
                     }
                 };
                 *drc.lock().expect("drc mutex poisoned") = packet.drc_preserved;
+                *buttons_raw.lock().expect("buttons mutex poisoned") = packet.buttons_raw;
                 StateUpdatePacket::from(packet).into()
             }),
         );
@@ -114,6 +180,7 @@ impl DeviceImplementation for A3959Implementation {
                 message: format!("{err:?}"),
             })?;
         *self.drc.lock().expect("drc mutex poisoned") = packet.drc_preserved;
+        *self.buttons_raw.lock().expect("buttons mutex poisoned") = packet.buttons_raw;
         Ok(StateUpdatePacket::from(packet).into())
     }
 
@@ -230,11 +297,70 @@ impl DeviceImplementation for A3959Implementation {
 
     fn set_multi_button_configuration(
         &self,
-        _state: DeviceState,
-        _button_configuration: MultiButtonConfiguration,
+        state: DeviceState,
+        button_configuration: MultiButtonConfiguration,
     ) -> crate::Result<CommandResponse> {
-        Err(crate::Error::FeatureNotSupported {
-            feature_name: "custom button actions",
+        // (order index, button id, slot accessor) for the six UI-editable slots
+        let slots: [(u8, u8, fn(&MultiButtonConfiguration) -> ButtonConfiguration); 6] = [
+            (0, 2, |c| c.left_single_click),
+            (1, 2, |c| c.right_single_click),
+            (2, 0, |c| c.left_double_click),
+            (3, 0, |c| c.right_double_click),
+            (6, 1, |c| c.left_long_press),
+            (7, 1, |c| c.right_long_press),
+        ];
+        let mut raw = self.buttons_raw.lock().expect("buttons mutex poisoned");
+        let mut packets = Vec::new();
+        for (order_index, button_id, get) in slots {
+            let wanted = get(&button_configuration);
+            let current_raw = raw[order_index as usize];
+            let current = {
+                let connected = current_raw & 0xF;
+                ButtonConfiguration {
+                    action: ButtonAction::from_repr(connected & 0x0F).unwrap_or_default(),
+                    is_enabled: connected != 0xF,
+                }
+            };
+            if current == wanted {
+                continue;
+            }
+            let action_byte = if !wanted.is_enabled {
+                0xFF
+            } else {
+                let action_id: u8 = wanted.action.into();
+                // preserve the disconnected-state nibble of the device unless the slot
+                // was fully disabled before
+                let disconnected = if current_raw == 0xFF {
+                    action_id
+                } else {
+                    current_raw >> 4
+                };
+                (disconnected << 4) | action_id
+            };
+            raw[order_index as usize] = action_byte;
+            packets.push(
+                SetButtonActionPacket {
+                    order_index,
+                    button_id,
+                    action_byte,
+                }
+                .into(),
+            );
+        }
+        let new_configuration = MultiButtonConfiguration {
+            left_single_click: button_configuration.left_single_click,
+            right_single_click: button_configuration.right_single_click,
+            left_double_click: button_configuration.left_double_click,
+            right_double_click: button_configuration.right_double_click,
+            left_long_press: button_configuration.left_long_press,
+            right_long_press: button_configuration.right_long_press,
+        };
+        Ok(CommandResponse {
+            packets,
+            new_state: DeviceState {
+                button_configuration: Some(new_configuration),
+                ..state
+            },
         })
     }
 }
