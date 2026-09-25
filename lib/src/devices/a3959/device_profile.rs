@@ -57,7 +57,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_sends_per_button_packets_and_preserves_the_disconnected_nibble() {
+    fn it_sends_symmetric_action_bytes_per_changed_slot() {
         let implementation = A3959Implementation::default();
         let state = implementation
             .initialize(REAL_DEVICE_STATE_UPDATE)
@@ -77,7 +77,7 @@ mod tests {
         let bytes = SetButtonActionPacket {
             side: 0,
             button_id: 0,
-            // disconnected nibble 6 preserved, connected nibble becomes 6 (PlayPause)
+            // symmetric byte: PlayPause (6) in both nibbles
             action_byte: 0x66,
         }
         .bytes();
@@ -362,15 +362,12 @@ impl DeviceImplementation for A3959Implementation {
             let action_byte = if !wanted.is_enabled {
                 0xFF
             } else {
+                // write the action into both nibbles (symmetric byte). Real device
+                // testing showed that bytes with a 0xF in the high nibble (e.g. 0xF0
+                // for volume up) are stored and acknowledged but never executed,
+                // while symmetric bytes such as 0x00 work reliably.
                 let action_id: u8 = wanted.action.into();
-                // preserve the disconnected-state nibble of the device unless the slot
-                // was fully disabled before
-                let disconnected = if current_raw == 0xFF {
-                    action_id
-                } else {
-                    current_raw >> 4
-                };
-                (disconnected << 4) | action_id
+                (action_id << 4) | action_id
             };
             raw[order_index] = action_byte;
             packets.push(
