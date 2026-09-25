@@ -12,7 +12,7 @@ import {
   EqualizerConfiguration,
   SoundModes,
 } from "../../../src/libTypes/DeviceState";
-import { EqualizerHelper } from "../../../wasm/pkg/openscq30_web_wasm";
+import { EqualizerHelper } from "../../../src/../wasm/pkg/openscq30_web_wasm";
 import { CustomEqualizerProfile } from "../../../src/storage/db";
 
 vi.mock(
@@ -58,10 +58,10 @@ describe("Device Settings", () => {
           hasAutoPowerOff: true,
           dynamicRangeCompressionMinFirmwareVersion: null,
           hasAmbientSoundModeCycle: false,
-      hasGamingMode: false,
-      hasSurroundSound: false,
-      hasDualConnections: false,
-      hasLowBatteryPrompt: false,
+          hasGamingMode: false,
+          hasSurroundSound: false,
+          hasDualConnections: false,
+          hasLowBatteryPrompt: false,
         },
         twsStatus: null,
         battery: {
@@ -91,11 +91,11 @@ describe("Device Settings", () => {
         firmwareVersion: null,
         serialNumber: null,
         ambientSoundModeCycle: null,
-      soundModesTypeThree: null,
-      gamingMode: null,
-      surroundSound: null,
-      dualConnections: null,
-      lowBatteryPrompt: null,
+        soundModesTypeThree: null,
+        gamingMode: null,
+        surroundSound: null,
+        dualConnections: null,
+        lowBatteryPrompt: null,
       }),
       connect: vi.fn<() => void>(),
       async setSoundModes(soundModes: SoundModes) {
@@ -121,51 +121,45 @@ describe("Device Settings", () => {
     vi.useRealTimers();
   });
 
-  it("should change ambient sound mode", async () => {
-    const renderResult = render(
+  function renderSettings() {
+    return render(
       <DeviceSettings
         device={device}
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         disconnect={() => {}}
       />,
     );
+  }
 
+  it("should change ambient sound mode", async () => {
+    const renderResult = renderSettings();
     expect(device.state.value.soundModes?.ambientSoundMode).toEqual(
       "noiseCanceling",
     );
+    await user.click(renderResult.getByText("soundModes.soundModes"));
     await user.click(renderResult.getByText("ambientSoundMode.normal"));
 
     expect(device.state.value.soundModes?.ambientSoundMode).toEqual("normal");
   });
 
   it("should change noise canceling mode", async () => {
-    const renderResult = render(
-      <DeviceSettings
-        device={device}
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        disconnect={() => {}}
-      />,
-    );
-
+    const renderResult = renderSettings();
     expect(device.state.value.soundModes?.noiseCancelingMode).toEqual(
       "transport",
     );
+    await user.click(renderResult.getByText("soundModes.soundModes"));
     await user.click(renderResult.getByText("noiseCancelingMode.indoor"));
-    expect(device.state.value.soundModes?.noiseCancelingMode).toEqual("indoor");
+    expect(device.state.value.soundModes?.noiseCancelingMode).toEqual(
+      "indoor",
+    );
   });
 
   it("should change equalizer configuration", async () => {
-    const renderResult = render(
-      <DeviceSettings
-        device={device}
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        disconnect={() => {}}
-      />,
-    );
-
+    const renderResult = renderSettings();
     expect([
       ...device.state.value.equalizerConfiguration.volumeAdjustments,
     ]).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+    await user.click(renderResult.getByText("equalizer.equalizer"));
     await user.click(
       renderResult.getByText("presetEqualizerProfile.soundcoreSignature"),
     );
@@ -178,32 +172,23 @@ describe("Device Settings", () => {
     ]).not.toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
-  it("should switch to custom profile when moving a silder", async () => {
-    const renderResult = render(
-      <DeviceSettings
-        device={device}
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        disconnect={() => {}}
-      />,
-    );
+  it("should switch to custom profile when moving a slider", async () => {
+    const renderResult = renderSettings();
+    await user.click(renderResult.getByText("equalizer.equalizer"));
 
     const numberInputs = renderResult.baseElement.querySelectorAll(
       "input[type='number']",
     );
     await user.type(numberInputs[0], "1");
+    vi.advanceTimersByTime(5000);
     expect(
-      renderResult.getByLabelText("equalizer.profile").textContent,
-    ).toEqual("equalizer.custom");
+      device.state.value.equalizerConfiguration.presetProfile,
+    ).toBeNull();
   });
 
   it("should not show custom profile create/delete buttons when a preset is selected", () => {
-    const renderResult = render(
-      <DeviceSettings
-        device={device}
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        disconnect={() => {}}
-      />,
-    );
+    const renderResult = renderSettings();
+    renderResult.getByText("equalizer.equalizer").click();
 
     expect(
       renderResult.queryByRole("button", { name: "application.create" }),
@@ -213,54 +198,37 @@ describe("Device Settings", () => {
     ).toBeFalsy();
   });
 
-  it("should show only one of a custom profile or a preset profile", async () => {
+  it("should apply a stored custom profile and allow returning to a preset", async () => {
     (useCustomEqualizerProfiles as ReturnType<typeof vi.fn>).mockReturnValue([
-      { name: "test", values: [0, 0, 0, 0, 0, 0, 0, 0], id: 1 },
+      { name: "test", values: [1, 0, 0, 0, 0, 0, 0, 0], id: 1 },
     ]);
-    const renderResult = render(
-      <DeviceSettings
-        device={device}
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        disconnect={() => {}}
-      />,
-    );
+    const renderResult = renderSettings();
+    await user.click(renderResult.getByText("equalizer.equalizer"));
 
-    // Check only preset profile shown
+    // select the stored custom profile from the select
+    await user.click(renderResult.getByLabelText("equalizer.customProfile"));
+    await user.click(await renderResult.findByRole("option", { name: /test/ }));
+    vi.advanceTimersByTime(5000);
     expect(
-      renderResult.getByLabelText("equalizer.profile").textContent,
-    ).toEqual("presetEqualizerProfile.soundcoreSignature");
-    expect(
-      renderResult.getByLabelText("equalizer.customProfile").textContent,
-    ).not.toEqual("test");
+      device.state.value.equalizerConfiguration.presetProfile,
+    ).toBeNull();
+    expect([
+      ...device.state.value.equalizerConfiguration.volumeAdjustments,
+    ]).toEqual([1, 0, 0, 0, 0, 0, 0, 0]);
 
-    // Check only custom profile shown
-    await user.click(renderResult.getByLabelText("equalizer.profile"));
+    // back to a preset via the grid card
     await user.click(
-      renderResult.getByRole("option", {
-        name: "equalizer.custom",
-      }),
+      renderResult.getByText("presetEqualizerProfile.classical"),
     );
+    vi.advanceTimersByTime(5000);
     expect(
-      renderResult.getByLabelText("equalizer.profile").textContent,
-    ).toEqual("equalizer.custom");
-    expect(
-      renderResult.getByLabelText("equalizer.customProfile").textContent,
-    ).toEqual("test");
+      device.state.value.equalizerConfiguration.presetProfile,
+    ).toEqual("Classical");
   });
 
   it("should synchronize sliders and number input values", async () => {
-    const renderResult = render(
-      <DeviceSettings
-        device={device}
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        disconnect={() => {}}
-      />,
-    );
-
-    await user.click(renderResult.getByLabelText("equalizer.profile"));
-    await user.click(
-      renderResult.getByRole("option", { name: "equalizer.custom" }),
-    );
+    const renderResult = renderSettings();
+    await user.click(renderResult.getByText("equalizer.equalizer"));
 
     const numberInputs: NodeListOf<HTMLInputElement> =
       renderResult.baseElement.querySelectorAll("input[type='number']");
@@ -271,36 +239,20 @@ describe("Device Settings", () => {
   });
 
   it("should debounce equalizer updates", async () => {
-    const renderResult = render(
-      <DeviceSettings
-        device={device}
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        disconnect={() => {}}
-      />,
-    );
-
-    await user.click(renderResult.getByLabelText("equalizer.profile"));
-    await user.click(
-      renderResult.getByRole("option", { name: "equalizer.custom" }),
-    );
-
-    expect(device.state.value.equalizerConfiguration.presetProfile).toEqual(
-      "SoundcoreSignature",
-    );
-    vi.advanceTimersByTime(500);
-    expect(device.state.value.equalizerConfiguration.presetProfile).toBeNull();
+    const renderResult = renderSettings();
+    await user.click(renderResult.getByText("equalizer.equalizer"));
 
     const numberInputs: NodeListOf<HTMLInputElement> =
       renderResult.baseElement.querySelectorAll("input[type='number']");
     await user.type(numberInputs[0], "1");
 
     expect(
-      device.state.value.equalizerConfiguration.volumeAdjustments[0],
-    ).toEqual(0);
+      device.state.value.equalizerConfiguration.presetProfile,
+    ).toEqual("SoundcoreSignature");
     vi.advanceTimersByTime(500);
     expect(
-      device.state.value.equalizerConfiguration.volumeAdjustments[0],
-    ).toEqual(1.0);
+      device.state.value.equalizerConfiguration.presetProfile,
+    ).toBeNull();
   });
 
   it("should display a toast when creating a custom profile fails", async () => {
@@ -317,10 +269,8 @@ describe("Device Settings", () => {
       </ToastQueue>,
     );
 
-    await user.click(renderResult.getByLabelText("equalizer.profile"));
-    await user.click(
-      renderResult.getByRole("option", { name: "equalizer.custom" }),
-    );
+    await user.click(renderResult.getByText("equalizer.equalizer"));
+    await user.click(renderResult.getByText("equalizer.custom"));
     await user.click(
       renderResult.getByRole("button", {
         name: "equalizer.createCustomProfile",

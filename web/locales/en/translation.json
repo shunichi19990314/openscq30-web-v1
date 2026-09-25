@@ -94,7 +94,8 @@
     "importExport": "Import/Export",
     "updateFailed": "Update failed. See console for details.",
     "newVersionAvailable": "A new version of OpenSCQ30 Web is available.",
-    "update": "Update"
+    "update": "Update",
+    "back": "Back"
   },
   "github": "GitHub",
   "ambientSoundMode": {
@@ -177,5 +178,10 @@
     "title": "OpenSCQ30 Web",
     "description": "A browser app for controlling Soundcore headphones and earbuds over Web Bluetooth.",
     "howto": "Press “Select Device” in the top right to connect your headphones."
+  },
+  "battery": {
+    "left": "Left",
+    "right": "Right",
+    "level": "Battery"
   }
 }

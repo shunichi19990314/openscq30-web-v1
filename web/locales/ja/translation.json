@@ -94,7 +94,8 @@
     "importExport": "インポート/エクスポート",
     "updateFailed": "更新に失敗しました。詳細はコンソールを確認してください。",
     "newVersionAvailable": "OpenSCQ30 Web の新しいバージョンが利用可能です。",
-    "update": "更新"
+    "update": "更新",
+    "back": "戻る"
   },
   "github": "GitHub",
   "ambientSoundMode": {
@@ -177,5 +178,10 @@
     "title": "OpenSCQ30 Web",
     "description": "Soundcoreのイヤホン・ヘッドホンをブラウザから操作するアプリです（Web Bluetooth対応）。",
     "howto": "右上の「デバイスを選択」からイヤホンと接続してください。"
+  },
+  "battery": {
+    "left": "Left",
+    "right": "Right",
+    "level": "Battery"
   }
 }
